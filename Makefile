@@ -1,7 +1,7 @@
 name=paper
 
 all : 
-	pdflatex $(name).tex && open $(name).pdf
+	pdflatex $(name)
 
 clean :
-	rm -f *log *aux *bbl
+	rm -f *log *aux *bbl $(name).pdf
