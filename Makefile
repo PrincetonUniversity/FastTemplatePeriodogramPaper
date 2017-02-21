@@ -1,4 +1,4 @@
-name=paper
+name=paper_v`cat VERSION.txt`
 
 all : 
 	pdflatex $(name)
