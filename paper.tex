@@ -45,7 +45,7 @@
     observations. Additional speedups are likely with improvements to the existing implementation.
 \end{abstract}
 
-\section{Introduction}
+\section{Introduction}\label{sec:introduction}
 
 Astrophysical time series are challenging to analyze. Unlike
 time series in other domains like economics and finance, astrophysical 
@@ -70,9 +70,8 @@ optimal measure of periodicity. A more robust estimate of the power spectrum is
 given by the Lomb-Scargle periodogram \citep{Lomb_1976,Scargle_1982,Barning_1963,Vanicek_1971}.
 
 ARMA models can also be extended to unevenly sampled data with the CARMA
-model \todo{cite CARMA or whatever the irregular-sampling extension of ARMA
-is}, but for the purposes of this paper, we focus solely on tools 
-applicable to the detection of periodic signals in astrophysical data. 
+model \citep{Kelly_etal_2014, Zinn_etal_2016}, but for the purposes of this paper, 
+we focus solely on tools applicable to the detection of periodic signals in astrophysical data. 
 
 The Lomb-Scargle periodogram and its extensions can be expressed in terms of 
 least-squares minimization between the data $\{y_n\}_{n=1}^N$ and a model $\hat{y}$.
@@ -175,12 +174,12 @@ the completeness of the final sample by applying template fits to a larger numbe
 which would require either more computational resources, more time, or, ideally, a more efficient
 template fitting procedure.
 
-The paper is organized as follows. Section \todo{section 1} poses the problem of template
-fitting in the language of least squares spectral analysis. Section \todo{section 2} presents
-abbreviated derivations and the resulting periodogram. Section \todo{section 3} describes
-a freely available implementation of the new template periodogram. Section \todo{section 4}
-summarizes our results, addresses caveats, and discusses possible avenues for improving
-the efficiency of the current algorithm.
+The paper is organized as follows. Section \ref{sec:derivations} poses the problem of template
+fitting in the language of least squares spectral analysis and derives the fast template
+periodogram. Section \ref{sec:implementation} describes a freely available implementation 
+of the new template periodogram. Section \ref{sec:discussion} summarizes our results, 
+addresses caveats, and discusses possible avenues for improving the efficiency of the current 
+algorithm.
 
 
 %Many astrophysical systems exhibit brightness fluctuations, and
@@ -199,7 +198,7 @@ the efficiency of the current algorithm.
 %indicators \todo{cite distance indicators}. Transiting exoplanets
 %are valuable 
 
-\section{Derivations}
+\section{Derivations}\label{sec:derivations}
 
 We define a template $\mathbf{M}$
 
@@ -428,6 +427,24 @@ We have derived an explicit, non-linear system of equations to solve for
 the parameters $\theta_1$, $\theta_2$, and $\theta_3$. Solving this system of equations
 requires finding the zeros of a polynomial $\hat{P}(u)$ at the given trial frequency.
 
+\subsection{Extending to multi-band observations}
+
+As shown in \cite{Vanderplas+Ivezic_2015}, the multi-phase periodogram (their 
+$(N_{\rm base}, N_{\rm band}) = (0, 1)$ periodogram), for any model can
+be expressed as a linear combination of single-phase periodograms:
+
+\begin{equation}
+\label{eq:multiband}
+P^{(0,1)} = \frac{\sum_{k=1}^K\chi^2_{0, k}P_{k}}{\sum_{k=1}^K\chi^2_{0,k}}
+\end{equation} 
+
+\noindent where $K$ denotes the number of bands. This means that the template
+periodogram can be applied to multi-band time series, which is crucial for
+experiments like LSST, SDSS, Pan-STARRS, and other current and future surveys.
+
+
+
+
 \subsection{Computational requirements}
 
 For a given number of harmonics $H$, the task of deriving 
@@ -460,13 +477,24 @@ Therefore, the entire template periodogram scales as
 \bigO(HN_f \log HN_f + H^4N_f).
 \end{equation}
 
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\textwidth]{plots/timing_vs_nharm.png}
+    \caption{\label{fig:timingnharm} Computation time of FTP scaled by $NH$ for
+            different numbers of harmonics. For $H\lesssim 3$, FTP scales
+            sublinearly in $H$ (possibly due to a constant overhead per
+            trial frequency, independent of $H$). When $3 \lesssim H \lesssim 11$,
+            FTP scales approximately linearly in $H$, and when $H \gtrsim 11$
+            FTP approaches the $\bigO(H^4)$ scaling limit.}
+\end{figure}
+
 For a fixed number of harmonics $H$, the template periodogram scales as
 $\bigO(N_f\log N_f)$. However, for a constant number of trial frequencies $N_f$, 
 the template algorithm scales as $\bigO(H^4)$, and computational resources
-alone limit $H$ to reasonably small numbers $H\lesssim15$.
+alone limit $H$ to reasonably small numbers $H\lesssim15$ (see Figure \ref{fig:timingnharm}).
 
 
-\section{Implementation}
+\section{Implementation}\label{sec:implementation}
 
 \begin{figure*}
     \centering
@@ -479,6 +507,7 @@ alone limit $H$ to reasonably small numbers $H\lesssim15$.
             to Lomb-Scargle is plotted in blue, using the same number of harmonics as the FTP.
             The Box Least-Squares \citep{Kovacs_2002} periodogram is shown in the final plot.}
 \end{figure*}
+
 An open-source implementation of the template periodogram in Python is
 available.\footnote{\url{https://github.com/PrincetonUniversity/FastTemplatePeriodogram}} 
 Computing $\hat{P}(u)$ is done using the \texttt{numpy.polynomial} module 
@@ -511,8 +540,12 @@ to pick the optimal parameters $\theta$. We compare the accuracy and
 speed of the fast template periodogram with the template fitting
 procedure provided by the \texttt{gatspy} library.
 
-We use a non-sinusoidal RR Lyrae template selected from \cite{Sesar_etal_2010} to perform tests and comparisons.
-
+Periodograms computed in Figures \ref{fig:tempsandpdgs}, \ref{fig:corrwgats},
+and \ref{fig:corrwhighh} used simulated data. The simulated data has uniformly
+random observation times, with gaussian-random, homoskedastic, uncorrelated 
+uncertainties. An eclipsing binary template, generated by fitting an
+eclipsing binary in the HATNet dataset (\todo{put in HATID for template})
+with a 10-harmonic truncated Fourier series.
 
 \subsubsection{Accuracy}
 
@@ -530,17 +563,40 @@ We use a non-sinusoidal RR Lyrae template selected from \cite{Sesar_etal_2010} t
 \begin{figure*}
     \centering
     \includegraphics[width=\textwidth]{plots/correlation_with_large_H.png}
-    \caption{\label{fig:corrwgats} Comparing the template periodogram calculated with $H=10$ harmonics
+    \caption{\label{fig:corrwhighh} Comparing the template periodogram calculated with $H=10$ harmonics
             to the template periodogram using a smaller number of harmonics $H < 10$. The template and
             data used to perform the periodogram calculations are the same as those shown in Figure \ref{fig:tempsandpdgs}.}    
 \end{figure*}
+
+Gatspy uses non-linear optimization at each trial frequency to solve
+for the best-fit amplitude, phase, and offset of the template. For
+weak signals or signals folded at the incorrect trial period, there
+may be a large number of local $\chi^2$ minima in parameter space, and thus
+the optimization algorithm may have trouble finding the global minimum. The 
+FTP, on the other hand, solves for the optimal parameters directly, and
+thus is able to recover optimal solutions even when the signal is weak
+or not present.
+
+Figure \ref{fig:corrwgats} illustrates the accuracy improvement with FTP.
+For large $P_{\rm FTP}(\omega)$, Gatspy and FTP agree well, while for
+$P_{\rm FTP} \lesssim 0.25$, FTP consistently finds better template fits
+than Gatspy. For many trial frequencies, Gatspy returns a periodogram value
+of $P_{\rm gatspy} = 0$, indicating no improvement over a constant fit,
+while FTP is able to find superior solutions at many of these frequencies.
+
+Figure \ref{fig:corrwhighh} compares FTP results obtained using the full template
+$(H=10)$ with those obtained using smaller numbers of harmonics. The left-most
+plot compares the $H=1$ case (weighted Lomb-Scargle), which, as also demonstrated
+in Figure \ref{fig:tempsandpdgs}, illustrates the advantage of the template
+periodogram for known, non-sinusoidal signal shapes.
+
 
 \subsubsection{Computation time}
 
 \begin{figure}
     \centering
-    \includegraphics[width=0.45\textwidth]{plots/timing_vs_ndata.png}
-    \caption{\label{fig:timing} Computation time of FTP compared with Gatspy. For a 6-harmonic
+    \includegraphics[width=0.5\textwidth]{plots/timing_vs_ndata.png}
+    \caption{\label{fig:timingndata} Computation time of FTP compared with Gatspy. For a 6-harmonic
              template and 15 observations, the FTP is three times faster than 
              Gatspy. FTP scales roughly as $\bigO(N)$ (or, for large enough values
              of $N$, $\bigO(N\log N)$), while Gatspy scales as $N^2$, thus the speedup of FTP
@@ -548,16 +604,116 @@ We use a non-sinusoidal RR Lyrae template selected from \cite{Sesar_etal_2010} t
              FTP offers over three orders of magnitude speedup over Gatspy.}
 \end{figure}
 
-\section{Discussion}
+FTP scales asymptotically as $\bigO(N_fH\log N_fH)$, however the computational
+time is usually dominated by computing polynomial coefficients and zero-finding,
+which scales as $\bigO(N_f H^4)$, even for very large numbers of frequencies
+$(N_f > 10^7)$. 
 
+Figure \ref{fig:timingndata} shows that FTP achieves a factor of 3 speedup for
+even the smallest test case (15 datapoints), while for larger cases ($N\sim10^4$)
+FTP offers 2-3 orders of magnitude speed improvement over Gatspy. 
 
+\section{Discussion}\label{sec:discussion}
 
-%Appendix: Derivation of characteristic polynomial
+Template fitting is a powerful technique for accurately recovering
+the period and amplitude of objects with \emph{a priori} known
+lightcurve shapes. It has been used in the literature by, e.g.
+\cite{Sesar_etal_2016, Sesar_etal_2010}, to analyze RR Lyrae in the
+SDSS and PS1 datasets, where it has been shown to produce purer
+samples of RR Lyrae at a given completeness. The computational
+cost of current template fitting algorithms, however, limits their
+application to larger datasets or with a larger number of templates.
 
+We have presented a novel template fitting algorithm that extends
+the Lomb-Scargle periodogram \citep{Lomb_1976,Scargle_1982,Barning_1963,Vanicek_1971}
+to handle non-sinusoidal signals that can be expressed in terms of
+a truncated Fourier series with a reasonably small number of harmonics
+($H\lesssim 10$). 
 
+The fast template periodogram (FTP) asymptotically scales as 
+$\bigO(N_fH\log N_fH)$, while previous template fitting algorithms
+such as the one used in the \texttt{gatspy} library \citep{gatspy},
+scale as $\bigO(N_{\rm obs}N_f\sim N_f^2)$. However, the FTP effectively
+scales as $\bigO(N_fH^4)$, since the time needed to compute polynomial
+coefficients and perform zero-finding dominates the computational time
+for most practical cases ($N_{\rm obs}\sim N_f \lesssim 10^7$).
+This effectively restricts the space of templates to those that are
+sufficiently smooth to be explained by a small number of Fourier terms.
+
+FTP also improves the accuracy of previous template fitting algorithms, 
+which rely on non-linear optimization at each trial frequency to minimize
+the $\chi^2$ of the template fit. The FTP routinely finds superior fits,
+especially when the signal is weak.
+
+An open-source Python implementation of the FTP is available at
+GitHub.\footnote{\url{https://github.com/PrincetonUniversity/FastTemplatePeriodogram}} 
+The current implementation can be improved in several ways:
+
+\begin{enumerate}
+    \item Improving the speed of the polynomial
+          coefficient calculations and the zero-finding steps.
+    \item Porting FTP to C/C++ and using CUDA to exploit GPU parallelism.
+    \item Extending the FTP to a multi-band periodogram to improve performance
+          on sparsely sampled multiband data (e.g. SDSS, LSST, Pan-STARRS).
+\end{enumerate}
+
+\begin{table}
+\centering
+\begin{tabular}{l|l|l|l}
+Survey     & $N_{\rm LC}$ & $N_{\rm obs}$ & Refs. \\
+\hline\hline
+CoRoT      & $1.5\times 10^5$  &  53,000       &       \\
+\hline
+ASAS-3     &   $2\times 10^7$  &  500          &       \\
+\hline
+HATNet     & $5.6\times 10^6$  &  10,000       &       \\
+\hline
+Gaia       &           $10^9$  &  70           &       \\
+\hline
+SuperWASP  & $3.2\times 10^7$  &  13,870       &       \\
+\hline
+OGLE-IV    &           $10^9$  &  5000         &       \\
+\hline
+LSST       & $3.7\times 10^10$ &  825          &       \\
+\hline
+\end{tabular}
+\caption{\label{tab:surveypars} Survey parameters used for Figure \ref{fig:surveys}.
+\todo{Add references (if we decide to keep this figure)}}
+\end{table}
+
+\begin{figure}
+\centering
+\includegraphics[width=0.5\textwidth]{plots/timing_for_various_surveys.png}
+\caption{\label{fig:surveys} Computational resources needed for performing 
+a single template periodogram ($H=6$) on an entire survey dataset. Our
+python implementation of FTP improves computational efficiency of template 
+searches by orders of magnitude in most cases, and in one case by over 
+three orders of magnitude (CoRoT). Parameters for $N_{\rm obs}$ and $N_{\rm LC}$
+were estimated from publicly available information (see text).}
+\end{figure}
+
+As pointed out in \cite{Vanderplas+Ivezic_2015}, current template fitting
+procedures are too slow to be practical for LSST-sized time-domain surveys.
+We attempt to quantify the improvement in computational efficiency for
+several important time-domain surveys, using estimated survey values for 
+$N_{\rm obs}$, the number of observations per object, and $N_{\rm LC}$, 
+the number of objects with lightcurves in the survey. 
+
+Figure \ref{fig:surveys} shows estimated computation time for a single
+template periodogram performed on the entirety of a given survey. For all
+surveys, the FTP improves computational efficiency in one case over
+three orders of magnitude, but typically between 2-3 orders of magnitude.
+Improving the existing implementation, and porting to C/C++ and CUDA,
+should further improve these numbers.
+
+Template fitting remains prohibitvely slow for practical applications to
+large time-domain surveys, but this work presents a possible shortcut
+that potentially could make template fitting a fast and valuable tool.
 
 %Appendix: Proof that GLS is recovered when H=1
-
+\begin{acknowledgements}
+\todo{(acknowledge GRANTS.)}
+\end{acknowledgements}
 
 \bibliography{refs}
 \end{document}

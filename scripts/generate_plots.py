@@ -137,11 +137,10 @@ def translate_color(ax, settings):
 
 def clean_up_figure(f, settings):
 	
-	
 	# save
 	if not settings['fname'] is None:
 		fname = os.path.join(settings['plot_dir'], settings['fname'])
-		f.savefig(fname)
+		f.savefig(fname, dpi=settings['dpi'])
 
 def clean_up_axis(ax, settings):
 
@@ -966,6 +965,70 @@ def test_bls(n = 1000):
 
 	plt.show()
 
+def plot_nobs_dt_for_surveys(settings=default_settings):
+	surveys = ConfigObj('surveys.ini', unrepr=True)
+	
+
+	surveys_to_use = []
+	for survey, info in surveys.iteritems():
+		relevant_info = [ 'nobs', 'nlc' ]
+		if all([ var in info for var in relevant_info ])\
+		      and not any([ info[var] is None for var in relevant_info ])\
+		      and not survey in settings['skip_surveys']:
+		    surveys_to_use.append(survey)
+
+
+	f, ax = plt.subplots()
+	settings = translate_color(ax, settings)
+
+	conversion = 1./(3600.)
+	unit = 'CPU hours'
+	X = [ surveys[s]['nobs'] * surveys[s]['nlc'] for s in surveys_to_use ]
+	Yftp = [ conversion * (float(x) / settings['ndata']) * settings['tftp'] for x in X ]
+	Ygats = [ conversion * (float(surveys[s]['nobs']) / settings['ndata'])**2 \
+	               * surveys[s]['nlc'] * settings['tgats'] for s in surveys_to_use ]
+
+	surveys_to_use, X, Yftp, Ygats = zip(*sorted(zip(surveys_to_use, X, Yftp, Ygats), key=lambda (s,x,y1,y2) : x ))
+	ax.scatter(X, Yftp, **settings['scatter_params_ftp'])
+	ax.scatter(X, Ygats, **settings['scatter_params_gats'])
+	ax.set_xscale('log')
+	ax.set_yscale('log')
+
+	ax.set_xlabel('$N_{\\rm obs} \\times N_{\\rm LC}$')
+	ax.set_ylabel("Exec time [%s]"%(unit))
+
+	if 'xlim' in settings:
+		ax.set_xlim(*settings['xlim'])
+	ymin, ymax = ax.get_ylim()
+	xmin, xmax = ax.get_xlim()
+	
+	y0 = settings['y0']
+	yf = settings['yf']
+	for i, (survey, x) in enumerate(zip(surveys_to_use, X)):
+		common_params = dict(va='center', ha='center', color=settings['font_color'],
+					fontsize=settings['annotation_fontsize'], bbox=settings['bbox'])
+
+		frac = (log10(x) - log10(xmin)) / (log10(xmax) - log10(xmin))
+		#ytext = pow(10, ((yf - y0) * frac + y0) * (log10(ymax) - log10(ymin)) + log10(ymin))
+		ytext = pow(10, 0.5 * abs(log10(Yftp[i]) - log10(Ygats[i])) \
+			                       + min([ log10(Yftp[i]), log10(Ygats[i]) ]))
+		#u = 1
+		#if i < len(surveys_to_use) - 1 and log10(X[i+1]) - log10(X[i]) < 0.75:
+			#ytext = pow(10, 0.6 * (log10(ymax) - log10(ymin)) + log10(ymin))
+		ax.plot([x, x], [Yftp[i], Ygats[i]], color=settings['scatter_params_ftp']['color'], 
+			lw=2)
+		if i > 0 and log10(X[i]) - log10(X[i-1]) < settings['dlogx_min']:
+			
+			ax.text(x * (1 + settings['dx_text2']), ytext, survey, rotation=270, **common_params)
+					#ha='left', **common_params)
+		else:
+			ax.text(x * (1 + settings['dx_text']), ytext, survey, rotation='vertical', **common_params)
+					#ha='right', **common_params)
+		ax.axvline(x, ls=':', color=settings['font_color'], zorder=1)
+	ax.legend(loc='upper left')
+
+	clean_up_axis(ax, settings)
+	clean_up_figure(f, settings)
 
 if __name__ == '__main__':
 	
@@ -991,6 +1054,7 @@ if __name__ == '__main__':
 	ofac, hfac = conf['analysis']['ofac'], conf['analysis']['hfac']
 	nharms     = conf['analysis']['nharms']
 
+	
 	nh = [ n for n in nharms ]
 	nh.append(tconf['nharm_answer'])
 
@@ -1035,9 +1099,11 @@ if __name__ == '__main__':
 	model.add_template( template )
 	
 	
-	plot_timing_vs_nharmonics(conf['timing_vs_nharmonics'])
-	plot_timing_vs_ndata(conf['timing_vs_ndata'])
-
+	#plot_timing_vs_nharmonics(conf['timing_vs_nharmonics'])
+	#plot_timing_vs_ndata(conf['timing_vs_ndata'])
+	plot_nobs_dt_for_surveys(settings=conf['nobs_dt_for_surveys'])
+	plt.show()
+	sys.exit()
 	plot_templates_and_periodograms(model, x, y, err, nharms = nh, freq_val=freq, 
 		                                     settings=conf['templates_and_periodograms'])
 
