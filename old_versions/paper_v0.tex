@@ -1,14 +1,8 @@
-\documentclass[apj]{emulateapj}
+\documentclass[iop]{emulateapj}
 
 \shorttitle{Fast Template Periodogram}
-\shortauthors{Hoffman et al. 2016}
-
-\usepackage[backref,breaklinks,colorlinks,citecolor=blue]{hyperref}
-\usepackage[all]{hypcap}
-%\renewcommand*{\backref}[1]{[#1]}
+\shortauthors{Hoffman and VanderPlas 2016}
 \usepackage{amsmath}
-
-
 \newcommand{\todo}[1]{{\bf #1}}
 \newcommand{\bigO}{\mathcal{O}}
 \newcommand{\savg}[1]{\left<#1\right>}
@@ -19,34 +13,26 @@
 \newcommand{\dA}{\partial A}
 \newcommand{\dB}{\partial B}
 
-% read VERSION.txt for version
-\newcommand{\versionfilename}{VERSION.txt}
 
-\newwrite\versionfile
-
-\AtBeginDocument{%
-  \immediate\openin\versionfile=\versionfilename
-  \read\versionfile to \versioninfo % \versioninfo is the macro containing the text line
-\immediate\closein\versionfile% 
-}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{document}
 
-\title{Fast and accurate template fitting with template periodograms\\
-         DRAFT VERSION \versioninfo }
-
-\author{J. Hoffman\altaffilmark{1},
-J. Vanderplas\altaffilmark{2},
-J. Hartman\altaffilmark{1},
-G. Bakos\altaffilmark{1}}
+\title{Fast and accurate template fitting with template periodograms}
+\author{J. Hoffman}
+\affil{Department of Astrophysical Sciences, Princeton University, Princeton NJ 08540}
 \email{jah5@princeton.edu}
-%\email{jakevdp@cs.washington.edu}
-%\email{jhartman@astro.princeton.edu}
-%\email{gbakos@astro.princeton.edu}
 
-\altaffiltext{1}{Department of Astrophysical Sciences, Princeton University, Princeton NJ 08540}
-\altaffiltext{2}{eScience Institute, University of Washington, Seattle, WA 98195}
+\author{J. VanderPlas}
+\affil{eScience Institute, University of Washington, Seattle, WA 98195}
+\email{jakevdp@cs.washington.edu}
+
+\author{J. Hartman}
+\affil{Department of Astrophysical Sciences, Princeton University, Princeton NJ 08540}
+\email{jhartman@astro.princeton.edu}
+
+\author{G. Bakos}
+\affil{Department of Astrophysical Sciences, Princeton University, Princeton NJ 08540}
+\email{gbakos@astro.princeton.edu}
 
 \begin{abstract}
     Astrophysical time series often contain periodic signals. In the near future,
@@ -667,12 +653,14 @@ especially when the signal is weak.
 
 An open-source Python implementation of the FTP is available at
 GitHub.\footnote{\url{https://github.com/PrincetonUniversity/FastTemplatePeriodogram}} 
-The current implementation could likely be improved by:
+The current implementation can be improved in several ways:
 
 \begin{enumerate}
     \item Improving the speed of the polynomial
           coefficient calculations and the zero-finding steps.
     \item Porting FTP to C/C++ and using CUDA to exploit GPU parallelism.
+    \item Extending the FTP to a multi-band periodogram to improve performance
+          on sparsely sampled multiband data (e.g. SDSS, LSST, Pan-STARRS).
 \end{enumerate}
 
 \begin{table}
@@ -682,7 +670,7 @@ Survey     & $N_{\rm LC}$ & $N_{\rm obs}$ & Refs. \\
 \hline\hline
 CoRoT      & $1.5\times 10^5$  &  53,000       &       \\
 \hline
-Kepler     & $1.7\times 10^5$  &  65,000       &       \\
+ASAS-3     &   $2\times 10^7$  &  500          &       \\
 \hline
 HATNet     & $5.6\times 10^6$  &  10,000       &       \\
 \hline
@@ -725,14 +713,13 @@ Improving the existing implementation, and porting to C/C++ and CUDA,
 should further improve these numbers.
 
 Template fitting remains prohibitvely slow for practical applications to
-large time-domain surveys, but this work presents a mathematical shortcut
-that could eventually make template fitting a fast and valuable tool.
+large time-domain surveys, but this work presents a possible shortcut
+that potentially could make template fitting a fast and valuable tool.
 
 %Appendix: Proof that GLS is recovered when H=1
 \begin{acknowledgements}
 \todo{(acknowledge GRANTS.)}
 \end{acknowledgements}
 
-\bibliographystyle{apj}
 \bibliography{refs}
 \end{document}
