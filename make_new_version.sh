@@ -10,7 +10,7 @@ echo "Changing v${VERSION_} -> v${VERSION}"
 echo $VERSION > VERSION.txt
 
 # change paper
-cp paper_v${VERSION_}.tex paper_${VERSION}.tex
+cp paper_v${VERSION_}.tex paper_v${VERSION}.tex
 
 # move (now-)old paper to old_versions
 mv paper_v${VERSION_}.tex old_versions/
