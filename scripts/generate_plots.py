@@ -18,7 +18,7 @@ from scipy.stats import pearsonr
 import pyftp.fast_template_periodogram as ftp
 from collections import namedtuple
 
-plt.style.use('ggplot')
+plt.style.use('./ggplot-like.mplstyle')
 rc('text', usetex=False)
 rc('font', **{'family' : 'sans-serif', 'sans-serif' : [ 'cmss10' ]})
 
@@ -658,7 +658,7 @@ def plot_accuracy(x, y, yerr, template, nharmonics, compare_with=10, settings=de
 	for i, h in enumerate(nharmonics):
 		# select the axes instance
 		r, c = i / ncols, i % ncols
-		ax = axes[c] if ncols > 1 and nrows == 1 else axes[r][c]
+		ax = axes[c] if ncols >= 1 and nrows == 1 else axes[r][c]
 
 		settings = translate_color(ax, settings)
 
@@ -782,10 +782,10 @@ def plot_templates_and_periodograms(model, x, y, err, freq_val=None, nharms = No
 	ydata, edata = tmp_transform(y, err)
 	y0, _        = tmp_transform(y0, None)
 
-	colorfunc = lambda i : "%.5f"%(settings['colorfunc_a'] * (float(len(nharms) - i - 1) / float(len(nharms) - 1)) \
-		                     + settings['colorfunc_b']) if i < len(nharms) - 1 \
-	                          else settings['answer_color']
-
+	#colorfunc = lambda i : "%.5f"%(settings['colorfunc_a'] * (float(len(nharms) - i - 1) / float(len(nharms) - 1)) \
+	#	                     + settings['colorfunc_b']) if i < len(nharms) - 1 \
+	#                          else settings['answer_color']
+        colorfunc = lambda i : settings['answer_color']
 	for i, (p, h) in enumerate(zip(p_ftps, nharms)):
 		offset = len(p_ftps) - i - 1
 		ytext =  offset + 0.5
@@ -983,6 +983,12 @@ def plot_nobs_dt_for_surveys(settings=default_settings):
 
 	conversion = 1./(3600.)
 	unit = 'CPU hours'
+        #for s in surveys_to_use:
+        #    try:
+        #        surveys[s]['nobs'] * surveys[s]['nlc']
+        #    except:
+        #        print s
+        #        sys.exit()
 	X = [ surveys[s]['nobs'] * surveys[s]['nlc'] for s in surveys_to_use ]
 	Yftp = [ conversion * (float(x) / settings['ndata']) * settings['tftp'] for x in X ]
 	Ygats = [ conversion * (float(surveys[s]['nobs']) / settings['ndata'])**2 \
@@ -1099,17 +1105,17 @@ if __name__ == '__main__':
 	model.add_template( template )
 	
 	
-	#plot_timing_vs_nharmonics(conf['timing_vs_nharmonics'])
-	#plot_timing_vs_ndata(conf['timing_vs_ndata'])
+	plot_timing_vs_nharmonics(conf['timing_vs_nharmonics'])
+	plot_timing_vs_ndata(conf['timing_vs_ndata'])
 	plot_nobs_dt_for_surveys(settings=conf['nobs_dt_for_surveys'])
-	plt.show()
-	sys.exit()
+	#plt.show()
+	#sys.exit()
 	plot_templates_and_periodograms(model, x, y, err, nharms = nh, freq_val=freq, 
 		                                     settings=conf['templates_and_periodograms'])
 
 	plot_accuracy(x, y, err, template, nharms, compare_with=tconf['nharm_answer'], 
 		                                     settings=conf['make_accuracy_plot'])
-	plot_accuracy(x, y, err, template, nharms, compare_with='gatspy', 
+	plot_accuracy(x, y, err, template, [ tconf['nharm_answer'] ], compare_with='gatspy', 
 		                                     settings=conf['make_accuracy_plot_with_gatspy'])
 
 	plt.show()
