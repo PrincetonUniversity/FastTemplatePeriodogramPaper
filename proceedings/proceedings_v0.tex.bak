@@ -72,7 +72,7 @@ periodic variability in noisy time series data. However, template fitting requir
 resources than running a Lomb Scargle periodogram \cite{Lomb_1976} on the same lightcurve, and the computational requirements scale as 
 $N_{\rm obs}N_f$, where $N_{\rm obs}$ is the number of observations in the lightcurve and $N_f$ is the number of trial frequencies.
 
-
+For example, \cite{Sesar_et_al_2016} found that template fitting produced superior results 
 
 These conference proceedings, to be edited by M. Catelan and W. Gieren, will be published by the EPJ Web of Conferences. This journal provides open online access to all published papers ({\tt\url{http://www.epj-conferences.org/}}). Please keep in mind the page limits for the different types of contributions: 
 
