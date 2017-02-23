@@ -1,0 +1,196 @@
+%%%%%%%%%%%%%%%%%%%%%%% file template.tex %%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% This is a template file for Web of Conferences Journal
+%
+% Copy it to a new file with a new name and use it as the basis
+% for your article
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%% EDP Science %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%%%\documentclass[option comma separated list]{webofc}
+%%%Three important options:
+%%% "epj" for EPJ Web of Conferences Journal
+%%% "bio" for BIO Web of Conferences Journal
+%%% "mat" for MATEC Web of Conferences Journal
+%%% "itm" for ITM Web of Conferences Journal
+%%% "e3s" for E3S Web of Conferences Journal
+%%% "shs" for SHS Web of Conferences Journal
+%%% "twocolumn" for typesetting an article in two columns format (default one column)
+%
+\documentclass{webofc}
+\usepackage[varg]{txfonts}   % Web of Conferences font
+\usepackage{listings}
+\usepackage{hyperref}
+\lstset
+{
+    language=[LaTeX]TeX,
+    breaklines=true,
+    basicstyle=\tt\small
+}
+%
+% Put here some packages required or/and some personnal commands
+%
+%
+\begin{document}
+%
+\title{Instructions for authors\thanks{If necessary, you can include a title footnote as well.}}
+%
+% subtitle is optionnal
+%
+%%%\subtitle{Do you have a subtitle?\\ If so, write it here}
+
+\author{\firstname{M\'{a}rcio} \lastname{Catelan}\inst{1,2}\fnsep\thanks{\href{mailto:mcatelan@astro.puc.cl}{\tt mcatelan@astro.puc.cl}} \and
+        \firstname{Wolfgang} \lastname{Gieren}\inst{2,3}\fnsep\thanks{\href{mailto:wgieren@astro-udec.cl}{\tt wgieren@astro-udec.cl}} 
+        % etc.
+}
+
+\institute{Pontificia Universidad Cat\'{o}lica de Chile, Instituto de Astrof\'{i}sica, Av. Vicu\~{n}a Mackenna 4860,\\ 782-0436 Macul, Santiago, Chile 
+\and
+           Millennium Institute of Astrophysics, Santiago, Chile  
+\and
+           Universidad de Concepci\'{o}n, Departamento de Astronom\'{i}a, Casilla 160-C, Concepci\'{o}n, Chile
+          }
+
+\abstract{%
+  Insert your abstract here. English only, please! A listing of keywords is {\em not} required. 
+}
+%
+\maketitle
+%
+
+
+\section{Introduction}\label{sec:intro}
+These conference proceedings, to be edited by M. Catelan and W. Gieren, will be published by the EPJ Web of Conferences. This journal provides open online access to all published papers ({\tt\url{http://www.epj-conferences.org/}}). Please keep in mind the page limits for the different types of contributions: 
+
+\begin{itemize}
+  \item Invited review papers: 12 pages; 
+  \item Invited regular papers: 8 pages; 
+  \item Contributed papers: 5 pages; 
+  \item Poster papers: 2 pages.  
+\end{itemize}  
+
+The figures must be in \lstinline!.pdf! format, and the \lstinline!.tex! file compiled using \lstinline!pdflatex!. The style file supplied with this package must not be edited, under any circumstances! 
+
+If you receive errors when you first attempt to compile the \lstinline!.tex! file, you may want to check if extracting the files contained in \lstinline!additional-styles.tar.gz! into the same directory where you placed your \lstinline!.tex! file solves the problem. If still unsuccessful, you may also need to install the package \lstinline!texlive-fonts-recommended!. 
+
+
+\section{Some specific instructions}\label{sec:sec-1}
+In the following, we provide some additional instructions on how to properly prepare your proceedings contribution. 
+
+\subsection{Figures and tables}\label{sec:figs-tabs}
+The typical typesetting for a figure is given in Figure~\ref{fig:fig-1}. In case you want your figure captions to be displayed on the side of the figure, please use the syntax provided along with Figure~\ref{fig:fig-2}. 
+
+\begin{figure*}
+\centering
+% Use the relevant command for your figure-insertion program
+% to insert the figure file. See example above.
+% If not, use
+\includegraphics[width=10cm,clip]{figure-epjwc.pdf}
+\caption{Please write your figure caption here  (standard formatting for the figure and caption).}
+\label{fig:fig-1}       % Give a unique label
+\end{figure*}
+
+\begin{figure}
+% Use the relevant command for your figure-insertion program
+% to insert the figure file.
+\centering
+\sidecaption
+\includegraphics[width=6cm,clip]{figure-epjwc.pdf}
+\caption{Please write your figure caption here (figure and caption side-by-side).}
+\label{fig:fig-2}       % Give a unique label
+\end{figure}
+
+For tables, please use the syntax of Table~\ref{tab:tab-1}.
+
+\begin{table}
+\centering
+\caption{Please write your table header here.}
+% For LaTeX tables you can use
+\begin{tabular}{lll}
+\hline
+first & second & third  \\\hline
+number & number & number \\
+number & number & number \\\hline
+\end{tabular}
+\label{tab:tab-1}       % Give a unique label
+\end{table}
+%
+
+\subsection{Equations}\label{sec:eqs}
+For typesetting equations, you can use the usual commands in \LaTeX. Please keep in mind that equations should read as part of the flow of the text and be punctuated as such. For instance, if you write 
+
+\begin{equation}
+- \frac{1}{r^2}
+\frac{\partial}{\partial m}\left(16 \pi^2 \Gamma_1 P \rho r^6
+\frac{d\eta}{dm}\right)
+- 4\pi r \left\{\frac{\partial}{\partial m}\left[(3\Gamma_1-4)P \right]\right\} \eta = 
+\sigma^2 \eta,  
+\label{eq:lawe}
+\end{equation}
+
+\noindent what you have is the linear adiabatic wave equation in Lagrangian form, whereas 
+
+\begin{equation}
+- \frac{1}{\rho r^4}
+\frac{\partial}{\partial r}\left(\Gamma_1 P r^4
+\frac{d\eta}{dr}\right)
+- \frac{1}{\rho r} \left\{\frac{\partial}{\partial r}\left[(3\Gamma_1-4)P \right]\right\} \eta = 
+\sigma^2 \eta  
+\label{eq:laweeuler}
+\end{equation}
+
+\noindent is the same equation, only in Eulerian form. 
+
+To close this section, we emphasize that excessive use of the \lstinline!$! symbol in inline equations is strongly discouraged. For instance, the expression $M_{K} = 0.868 - 2.353 \, \log{P} + 0.175 \, {\rm [Fe/H]}$ should be written thus: \lstinline!$M_{K} = 0.868 - 2.353 \, \log{P} + 0.175 \, {\rm [Fe/H]}$!. 
+
+\subsection{Labels}\label{sec:labels}
+Please make sure you use the \lstinline!\label! command in \LaTeX to identify all your sections, subsections, tables, equations, and figures! Each such entry should be given its own, unique label. They should all be cross-referenced within your document using the \lstinline!\ref! command. 
+
+\subsection{Bibliography}\label{sec:biblio}
+For the bibliography, please use the same format as in the examples included in this template file. The references should always be cited using the \lstinline!\cite! command. Thus, \lstinline!\cite{RefB1}! produces as output \cite{RefB1}. Citations in parenthetical clauses (\cite{RefPRC1,RefJ1,RefJ2}) use the same format for the \lstinline!\cite! command. 
+
+
+\section{Submission}\label{sec:summary}
+Once your paper is written, please prepare a single compressed file (\lstinline!.gz! or \lstinline!.zip! format) containing all of the files that comprise your contribution (including the \lstinline!.pdf! file resulting from your compilation), and submit it using the web interface that will be available on our web page for this purpose. You are welcome to send a copy of this file to the editors of these proceedings as well. \textbf{Important:} your submission must also include a signed copy of the License Agreement form.\footnote{\tt\url{http://www.epj-conferences.org/doc_journal/copyright/epjconf_copyright.pdf}}
+
+{\bf The deadline for submission is Feb. 26, 2017.} 
+
+
+
+\begin{acknowledgement} 
+\noindent\vskip 0.2cm
+\noindent {\em Acknowledgments}: Your acknowledgments, if any, should go in this field. 
+\end{acknowledgement}
+
+% BibTeX or Biber users please use (the style is already called in the class, ensure that the "woc.bst" style is in your local directory)
+% \bibliography{name or your bibliography database}
+%
+% Non-BibTeX users please use
+%
+\begin{thebibliography}{}
+%
+% and use \bibitem to create references.
+%
+
+% Format for Conference Proceedings paper 
+\bibitem{RefPRC1}
+Catelan, M., in \textit{Variable Stars in the Local Group}, ASP Conference Series, Vol. 310, ed. D. W. Kurtz \& K. R. Pollard, p.~113 (2004)
+
+% Format for books
+\bibitem{RefB1}
+Catelan, M., \& Smith, H. A., \textit{Pulsating Stars} (Wiley-VCH, Weinheim, 2015)
+
+% Format for Journal Reference with up to 8 authors
+\bibitem{RefJ1}
+Gieren, W., Pietrzy{\'n}ski, G., Soszy{\'n}ski, I., Bresolin, F., Kudritzki, R.-P., Minniti, D., \& Storm, J., ApJ, \textbf{628}, 695 (2005)
+
+% Format for Journal Reference with more than 8 authors
+\bibitem{RefJ2}
+Gieren, W., Pilecki, B., Pietrzy{\'n}ski, G., et al., ApJ, \textbf{815}, 28 (2015)
+
+\end{thebibliography}
+
+\end{document}
+
+% end of file template.tex
+
