@@ -1,0 +1,87 @@
+Feb 22
+
+1. Title: I think the current title doesn't really convey the essence of what you have done. In particular, I suspect that most readers would not know what this paper is about after seeing the title on astro-ph, and would thereby not bother to read through the paper.  I also think it's important to come up with a title that would attract the interest of non-astronomers searching for solutions to this same problem. Here are some possible alternatives:
+   "A Fast Template Periodogram for Detecting Non-Sinusoidal Signals in Irregularly Sampled Time Series"
+   "A Fast Template Periodogram for Detecting Non-Sinusoidal Fixed-Shape Signals in Irregularly Sampled Time Series"  (or same with "Form" instead of "Shape")
+   "A Fast and Accurate Method for Computing Template Periodograms to Detect General Fixed-Shape Periodic Signals in Irregularly Sampled Time Series"
+   or something else like that (the latter if you want to be clear that the computational method is new, and not the periodogram itself).
+
+2. Abstract, second sentence, "In the near future ..." it is already true that the existing volume of data demands computationally efficient methods, we don't have to wait for the future.  I would make this sentence refer to the present state.
+
+3. Abstract, somewhere in here I would mention that the templates are represented as truncated Fourier Series. This is to make it clear that your method supports a very flexible form for the templates.
+
+4. Abstract, I would add another sentence summarizing in a bit more detail how you achieve the significant speed-up (i.e., the crux of your method). e.g., following "(scaling as O(N log N))." you might add "We achieve this efficiency by recasting the non-linear least squares problem as a problem of finding the roots of a polynomial whose coefficients can be computed efficiently via a Fast Fourier Transform."  (or something else like that).
+
+5. Abstract, I would like to see the phrase "matched filter periodogram" appear somewhere here, as that is a likely search term for non-astronomers who might find your algorithm useful. Perhaps following the above, you could say "Our method provides a fast matched filter periodogram for irregularly sampled time series that supports general signal shapes." or something like that.
+
+6. Abstract, list a few specific astronomical applications at the end of this (e.g., finding pulsating stars like delta scutis, RR Lyrae, Cepheids, perhaps finding contact binaries)
+
+7. Introduction, page 2, "The HATNet telescope", change "telescope" to "survey" and provide a citation to Bakos et al. 2004, PASP, 116, 266
+
+8. Introduction, page 2, "We refer to latter technique."  add "the" after "to"
+
+9. Equation 9, you should stress that for this analysis the "c_n" and "s_n" are fixed. This distinguishes your method from the multi-harmonic lomb-scargle periodogram which you show in figure 2.
+
+10. Equation 10, is it really necessary to provide this convergence requirement?  For the purposes of this algorithm, \hat{M} is the template, not M. Since you don't keep to this level of mathematical rigor later in the paper (e.g., equation 40), I think it may be better to avoid introducing this kind of formalism at the start and elevating the readers' expectations.
+
+11. Equations 11 and 12 use $i$ as the time subscript, but then starting at equation 14 (really 13) you switch to $n$ for this subscript. For clarity you should use the same subscript throughout.
+
+12. Equation 14, middle equation, the $\hat{y}$ term should have an $n$ subscript.
+
+13. following equation 14, "To hopefully make our derivations more intuitive" change to "To simply our derivations"
+
+14. following equation 18, "we denote shifted" add "the" after "denote"
+
+15. equation 20, define $\bar{y}$ or use $\left< y \right>$ for consistency.
+
+16. After equation 23, "From this we obtain", you might say "Combining equations 23, 14 and 20, we obtain".  Also, aren't you assuming here $\theta_{1} != 0$?  What happens if you try to fit a set of data with zero variance? Is it important to mention this assumption?
+
+17. After equation 30, "all of which can be evaluated efficiently with NFFTs."  perhaps say "all of which can be evaluated efficiently at all values of $\omega$ with NFFTs."  
+
+18. equation 31, isn't the usual convention to list $M_{\theta_{2}}(x)$ on the left hand side of the top equation only, and then leave the left-hand-side empty for the next three lines?
+
+19. equation 37, shouldn't this be Var(M_{\theta_2}) not Var(M_{\theta_2}^2)?
+
+20. You don't really need the $\pm$ in equation 40 since $q(u)$ is an undefined polynomial and can absorb the sign.
+
+21. The paragraph following equation 39, and including equations 40 and 41, is confusing, and I think too terse.  In equation 40 $p(u)$ and $q(u)$ will be different for each of the expressions on the left hand-side. Perhaps that is obvious, but you could just mention this fact for clarity.  Also, if I follow the derivation correctly, then equation 39 is really expressed as 0 = \hat{p}(u) + (1 - u^2)^{-1/2} \hat{q}(u), and you are multiplying both sides by ((1 - u^{2})^{1/2})((1 - u^{2})^{1/2}\hat{p}(u) - \hat{q}(u)) to get equation 41. That step is important, and should be listed explicitly, as it includes the assumption u^2 != 1 (meaning, I think, that you need to always check the possibility that either \theta_{2} = 0 or \theta_{2} = \pi is the optimal value). Also it means that many of the roots of $\hat{P}(u)$ (those that are roots of (1 - u^{2})^{1/2}\hat{p}(u) - \hat{q}(u))) may not actually be local chi^2 minima, so you are potentially over-complicating the problem.  A final question that I think should be addressed here is why you want to get an actual polynomial, as opposed to finding the roots of (0 = \hat{p}(u) + (1 - u^2){-1/2}\hat{q}(u))?  Are root-finding algorithms for polynomials significantly faster than root finding algorithms for other analytic expressions? If so, that fact should be mentioned.
+
+22. After the above paragraph you need to finish connecting the dots for the reader to complete the method. Say that you solve for the roots of $\hat{P}$ and then say what you do with those roots to determine the global $\chi^2$ minimum. I assume you evaluate \chi^2 at each possibility, but is there some trick you are using to speed up that evaluation (e.g., do you express \chi^2 in terms of sums of cos and sin values that can also be evaluated efficiently with NFFTs at all omegas?)?  Finally, once you have the optimal values of $\theta_1$, $\theta_2$ and $\theta_3$, what expression are you evaluating to determine the periodogram? Is it the usual (\chi^2_{0} - \chi^2_model)/(\chi^{2}_{0})?
+
+23. Last paragraph of Section 2, "We have derived an explicit, non-linear system of equations to solve for ..."  Reference the equation numbers here explicitly to make it obvious to the reader trying to implement this how to do so.
+
+24. Section 3, first sentence, "An open-source implementation of the template periodogram" change to "An open-source implementation of the Fast Template Periodogram (FTP)" to define this acronym which you use later in the paper.
+
+24. Section 3.1, paragraph 2, first sentence. "Periodograms computed in Figures 2, 3, and 4 used simulated data." I suggest instead saying "Figure 2 shows example periodograms computed for simulated data, and compares the FTP to the multi-harmonic Lomb-Scargle (MHLS; *** reference ***) and Box Least Squares (BLS; Kov\'acs et al. 2002) periodograms." Otherwise you don't introduce the content of figure 2 in the body of the paper. You can leave the figure 3 and 4 references to Section 3.1.1, where they appear.
+
+25. Section 3.1, paragraph 2, last sentence starting "An eclipsing binary template ..." is incomplete. You need to finish the thought with something like "is added to the data, and then used as the template for the FTP search".  Also the HATID is not known outside of the HATNet group, so instead give the 2MASS ID for the star.
+
+26. Section 3.1, Say that the FTP provides a much stronger detection of the signal at the correct period compared to the Multi-harmonic Lomb Scargle (which has many more free parameters and thus reduces the S/N of the periodogram peak) and BLS (which provides a poor match to the signal form).
+
+27. Section 3.1.1, paragraph 1, "there may be a large number of local $\chi^2$ minima" (isn't the number of local chi^2 minima simply related to the number of polynomial roots? You don't have to be ambiguous here, you can quantify this!)
+
+28. Figures 3 and 4 - tell the reader in the caption what $R$ is.
+
+29. Also, why is $P_gatspy$ sometimes > $P_FTP$ if they are equivalent except for the possibility that $P_gatspy$ picks up a local \chi^2 minimum instead of the global minimum? Are you using $P = (\chi^2_{0} - \chi^2_{model})/\chi^{2}_{0}$? If so then $P_gatspy > P_FTP$ suggests that Gatspy picked up a better fit to data than FTP. Are you sampling the periodograms at exactly the same frequencies?
+
+30. Similarly, why is the lower harmonic $P_FTP$ sometimes greater than the higher harmonic $P_FTP$? Is this due to noise in the simulated light curve?
+
+31. Figure 3 caption, I suggest changing "same simulated data as shown in Figure 2." to "simulated data, an example of which is shown in Figure 2."  (persumably you didn't show all of the realized simulations in Figure 2).  I also think you need to say that you are comparing periodogram peak values, not the periodograms themselves.
+
+32. Figure 4 caption, change to "Similar to Figure 3. Here we compare the template periodogram calculated with $H = 10$ harmonics to the template periodogram using a smaller number of harmonics $H < 10$."
+
+33. Section 4, paragraph 1, "to analyze RR Lyrae" change to "to detect RR Lyrae"
+
+34. Section 4, paragraph 1, "limits their application to larger datasets or with a larger number of templates." I suggest changing "limits" to "prevents", and deleting "or with a larger number of templates" (I'm not sure exactly what you're referring to in that case).
+
+35. Section 4, paragraph 2, "in terms of a truncated Fourier series", perhaps add "fixed" before "truncated"
+
+36. Section 4, last paragraph, I suggest adopting a more positive tone: "While template fitting remains slow for practical applications to very large time-domain surveys, this work presents a mathematical shortcut that, when combined with a more efficient implementation, will make template fitting a fast and valuable tool for detecting non-sinusoidal periodic signals of specified shape in large time-series datasets."
+
+Some other thoughts:
+
+1. What if you want to search for a linear combination of templates, each with independent amplitudes and phases?
+
+2. I agree with Jake that imposing the positivity constraint will probably substantially affect the speed, so you should just mention the issue, but not try to solve this problem here.
+
+3. If you tried to run this on any real data (e.g., a single HATNet field), it would be great to see some actual examples of signals pulled out. I wouldn't hold up the paper to do a search that you haven't carried out yet though.

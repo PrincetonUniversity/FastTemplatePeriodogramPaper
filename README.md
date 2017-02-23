@@ -1,3 +1,13 @@
+# Paper for fast template periodogram
+
+### Notes
+
+
+Feb 23, 2017
+------------
+Version 1 complete.
+
+
 Jan 25, 2017
 ------------
 John Hoffman
