@@ -1,28 +1,28 @@
 Feb 22
 
-1. Title: I think the current title doesn't really convey the essence of what you have done. In particular, I suspect that most readers would not know what this paper is about after seeing the title on astro-ph, and would thereby not bother to read through the paper.  I also think it's important to come up with a title that would attract the interest of non-astronomers searching for solutions to this same problem. Here are some possible alternatives:
+X 1. Title: I think the current title doesn't really convey the essence of what you have done. In particular, I suspect that most readers would not know what this paper is about after seeing the title on astro-ph, and would thereby not bother to read through the paper.  I also think it's important to come up with a title that would attract the interest of non-astronomers searching for solutions to this same problem. Here are some possible alternatives:
    "A Fast Template Periodogram for Detecting Non-Sinusoidal Signals in Irregularly Sampled Time Series"
    "A Fast Template Periodogram for Detecting Non-Sinusoidal Fixed-Shape Signals in Irregularly Sampled Time Series"  (or same with "Form" instead of "Shape")
    "A Fast and Accurate Method for Computing Template Periodograms to Detect General Fixed-Shape Periodic Signals in Irregularly Sampled Time Series"
    or something else like that (the latter if you want to be clear that the computational method is new, and not the periodogram itself).
 
-2. Abstract, second sentence, "In the near future ..." it is already true that the existing volume of data demands computationally efficient methods, we don't have to wait for the future.  I would make this sentence refer to the present state.
+X 2. Abstract, second sentence, "In the near future ..." it is already true that the existing volume of data demands computationally efficient methods, we don't have to wait for the future.  I would make this sentence refer to the present state.
 
-3. Abstract, somewhere in here I would mention that the templates are represented as truncated Fourier Series. This is to make it clear that your method supports a very flexible form for the templates.
+X 3. Abstract, somewhere in here I would mention that the templates are represented as truncated Fourier Series. This is to make it clear that your method supports a very flexible form for the templates.
 
-4. Abstract, I would add another sentence summarizing in a bit more detail how you achieve the significant speed-up (i.e., the crux of your method). e.g., following "(scaling as O(N log N))." you might add "We achieve this efficiency by recasting the non-linear least squares problem as a problem of finding the roots of a polynomial whose coefficients can be computed efficiently via a Fast Fourier Transform."  (or something else like that).
+X 4. Abstract, I would add another sentence summarizing in a bit more detail how you achieve the significant speed-up (i.e., the crux of your method). e.g., following "(scaling as O(N log N))." you might add "We achieve this efficiency by recasting the non-linear least squares problem as a problem of finding the roots of a polynomial whose coefficients can be computed efficiently via a Fast Fourier Transform."  (or something else like that).
 
-5. Abstract, I would like to see the phrase "matched filter periodogram" appear somewhere here, as that is a likely search term for non-astronomers who might find your algorithm useful. Perhaps following the above, you could say "Our method provides a fast matched filter periodogram for irregularly sampled time series that supports general signal shapes." or something like that.
+X 5. Abstract, I would like to see the phrase "matched filter periodogram" appear somewhere here, as that is a likely search term for non-astronomers who might find your algorithm useful. Perhaps following the above, you could say "Our method provides a fast matched filter periodogram for irregularly sampled time series that supports general signal shapes." or something like that.
 
-6. Abstract, list a few specific astronomical applications at the end of this (e.g., finding pulsating stars like delta scutis, RR Lyrae, Cepheids, perhaps finding contact binaries)
+* 6. Abstract, list a few specific astronomical applications at the end of this (e.g., finding pulsating stars like delta scutis, RR Lyrae, Cepheids, perhaps finding contact binaries)
 
-7. Introduction, page 2, "The HATNet telescope", change "telescope" to "survey" and provide a citation to Bakos et al. 2004, PASP, 116, 266
+X 7. Introduction, page 2, "The HATNet telescope", change "telescope" to "survey" and provide a citation to Bakos et al. 2004, PASP, 116, 266
 
-8. Introduction, page 2, "We refer to latter technique."  add "the" after "to"
+X 8. Introduction, page 2, "We refer to latter technique."  add "the" after "to"
 
-9. Equation 9, you should stress that for this analysis the "c_n" and "s_n" are fixed. This distinguishes your method from the multi-harmonic lomb-scargle periodogram which you show in figure 2.
+X 9. Equation 9, you should stress that for this analysis the "c_n" and "s_n" are fixed. This distinguishes your method from the multi-harmonic lomb-scargle periodogram which you show in figure 2.
 
-10. Equation 10, is it really necessary to provide this convergence requirement?  For the purposes of this algorithm, \hat{M} is the template, not M. Since you don't keep to this level of mathematical rigor later in the paper (e.g., equation 40), I think it may be better to avoid introducing this kind of formalism at the start and elevating the readers' expectations.
+(X) 10. Equation 10, is it really necessary to provide this convergence requirement?  For the purposes of this algorithm, \hat{M} is the template, not M. Since you don't keep to this level of mathematical rigor later in the paper (e.g., equation 40), I think it may be better to avoid introducing this kind of formalism at the start and elevating the readers' expectations.
 
 11. Equations 11 and 12 use $i$ as the time subscript, but then starting at equation 14 (really 13) you switch to $n$ for this subscript. For clarity you should use the same subscript throughout.
 

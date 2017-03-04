@@ -33,7 +33,7 @@
 
 \begin{document}
 
-\title{Fast and accurate template fitting with template periodograms\\
+\title{A Fast Template Periodogram for Detecting Non-Sinusoidal Fixed-Shape Signals in Irregularly Sampled Time Series\\
          DRAFT VERSION \versioninfo }
 
 \author{J. Hoffman\altaffilmark{1},
@@ -49,20 +49,25 @@ G. Bakos\altaffilmark{1}}
 \altaffiltext{2}{eScience Institute, University of Washington, Seattle, WA 98195}
 
 \begin{abstract}
-    Astrophysical time series often contain periodic signals. In the near future,
-    the sheer volume of astrophysical time series data (e.g. from LSST) will demand
-    computationally efficient methods for detecting and characterizing such signals. 
-    The most efficient algorithms that exist to date are those that exploit the $\bigO(N\log N)$ nature of
-    the Fast Fourier Transform. However, these methods are not optimal for non-sinusoidal
-    signal shapes. Template fitting optimizes sensitivity for \emph{a priori} known
-    signal shapes but at enormous computational cost that scales as $\bigO(N^2)$, and without the garauntee
-    that the fitting procedure obtains the best fit at each trial frequency. In this work, we present
-    a non-linear extension of the Lomb-Scargle periodogram as a template-fitting
-    algorithm that is both accurate (the exact optimal solutions are obtained except
-    in rare cases) and computationally efficient (scaling as $\bigO(N\log N)$). We show that our method
+
+    Astrophysical time series often contain periodic signals. The sheer volume of time series data from 
+    photometric surveys demands computationally efficient methods for detecting and characterizing such signals. 
+    The most efficient algorithms available for this purpose are those that exploit the 
+    $\bigO(N\log N)$ scaling of the Fast Fourier Transform (FFT). However, these methods are not optimal 
+    for non-sinusoidal signal shapes. Template fits (or periodic matched filters) optimize 
+    sensitivity for \emph{a priori} known signal shapes but at enormous computational cost. Current 
+    implementations of template periodograms scale as $\bigO(N_f N_{\rm obs})$, where $N_f$ is the number 
+    of trial frequencies and $N_{\rm obs}$ is the number of lightcurve observations, and they do not 
+    gaurantee the best fit at each trial frequency. In this work, we present a non-linear extension of the Lomb-Scargle 
+    periodogram which provides a template-fitting algorithm that is both accurate (the exact optimal solutions are
+    obtained except in rare cases) and computationally efficient (scaling as $\bigO(N_f\log N_f)$). 
+    The non-linear optimization of the template fit at each frequency is recast as a polynomial 
+    zero-finding problem, where the coefficients of the polynomial can be computed efficiently with
+    FFTs. We show that our method, which uses truncated Fourier series to approximate templates, 
     is twice as fast as existing algorithms for small problems ($N\lesssim 10$ observations) and
-    up to 3 orders of magnitude faster for long base-line time series with $N\sim 10^4$ 
-    observations. Additional speedups are likely with improvements to the existing implementation.
+    up to 3 orders of magnitude faster for long base-line time series with $\bigO(10^4)$ observations.
+    An open-source implementation of the fast template periodogram is available at 
+    \href{https://www.github.com/PrincetonUniversity/FastTemplatePeriodogram}{github.com/PrincetonUniversity/FastTemplatePeriodogram}. 
 \end{abstract}
 
 \section{Introduction}\label{sec:introduction}
@@ -131,7 +136,7 @@ $\sigma = {\rm Var}(y_n)$, the variance of the data.
 Heteroskedasticity can be handled by using weighted least squares, 
 
 \begin{equation}
-\chi^2(\theta, S) \equiv \sum_i \frac{(y_i - \hat{y}(t_i|\theta) )^2}{\sigma_i}^2,
+\chi^2(\theta, S) \equiv \sum_i \frac{(y_i - \hat{y}(t_i|\theta) )^2}{\sigma_i^2},
 \end{equation}
 
 \noindent with weights $w_i = \frac{W}{\sigma_i^2}$, $W\equiv\sum \sigma_i^{-2}$ being
@@ -150,7 +155,7 @@ out in \cite{Leroy_2012}, is to use the non-equispaced FFT (NFFT) \cite{NFFT} to
 the sums; this provides an order of magnitude speedup over the \cite{Press+Rybicki_1989}
 algorithm, and both algorithms scale as $\bigO(N\log N)$.
 
-There also exists a continually growing number of alternative methods for detecting
+There is a growing population of alternative methods for detecting
 periodic signals in astrophysical data. Some of these methods can reliably
 outperform the Lomb-Scargle periodogram, especially for non-sinusoidal signal shapes
 (see \cite{Graham_etal_2013} for a recent empirical review). However, a key advantage
@@ -159,17 +164,17 @@ Virtually all other methods scale as $N\times N_f \sim N^2\sim N_f^2$, where $N$
 of observations and $N_f$ is the number of trial frequencies, while the Lomb-Scargle
 periodogram scales as $N_f\log N_f \sim N\log N$.
 
-The importance of efficient algorithms will only become more important as the volume
-of data produced by astronomical observatories continues to grow. The HATNet telescope,
-for example, has already made $\bigO(10^4)$ observations of $\bigO(10^6-10^7)$ stars. 
-The Gaia telescope \citep{GAIA} is set to produce $\bigO(10-100)$ observations of 
-$\bigO(10^9)$ stars. The Large Synoptic Survey Telescope (LSST; \cite{LSST}) will 
-produce 15 Terabytes of data per night once operation begins in 2023.
+Algorithmic efficiency will become increasingly important as the volume
+of data produced by astronomical observatories continues to grow larger. The HATNet survey 
+\citep{Bakos_etal_2004}, for example, has already made $\bigO(10^4)$ observations of 
+$\bigO(10^6-10^7)$ stars. The Gaia telescope \citep{GAIA} is set to produce $\bigO(10-100)$ 
+observations of $\bigO(10^9)$ stars. The Large Synoptic Survey Telescope (LSST; \cite{LSST}) 
+will make $\bigO(10^2-10^3)$ observations of $\bigO(10^{10})$ stars during its operation starting in 2023.
 
 This paper develops new extensions to least-squares spectral analysis for arbitrary
 signal shapes. For non-periodic signals this method is known as matched filter analysis,
 and can be extended to search for periodic signals by phase folding the data
-at different trial periods. We refer to latter technique, the subject of this paper, as
+at different trial periods. We refer to the latter technique, the subject of this paper, as
 template fitting. 
 
 Recently, \cite{Sesar_etal_2016} found that template fitting significantly improved
@@ -238,10 +243,14 @@ $\mathbf{M}$ can be adequately described by a truncated Fourier series
 
 \begin{equation}
 \begin{split}
-    (\forall \epsilon > 0)&(\exists H \in \mathbb{N})~~{\rm s.t.}\\
-    &\left|\mathbf{M}(t) - \hat{\mathbf{M}}(t|H)\right| < \epsilon~~\forall t\in [0, 1).
+   \forall t \in (0, 1]:\, \lim_{H\rightarrow\infty} \left|\mathbf{M}(t) - \hat{\mathbf{M}}(t|H)\right| = 0
 \end{split}
 \end{equation}
+
+That the $c_n$ and $s_n$ values are \emph{fixed} (i.e., they define 
+the template) is the crucial difference between the template periodogram and
+the Multiharmonic Lomb Scargle (or FastChi) \citep{Palmer_2009}, where $c_n$ and $s_n$ 
+are \emph{free parameters}.
 
 We now construct a periodogram for this template. The periodogram assumes 
 that an observed time series $S = \{(t_i, y_i, \sigma_i)\}_{i=1}^N$ can be modeled 
@@ -264,48 +273,70 @@ squared residuals,
 the optimal solution $\theta=\theta_{\rm opt}$:
 
 \begin{equation}\label{eq:chi2conds}
-    \left.\frac{\partial\chi^2}{\partial\theta_i}\right|_{\theta=\theta_{\rm opt}} = 0~~\forall\theta_i\in\theta.
+    \left.\frac{\partial\chi^2}{\partial\theta_j}\right|_{\theta=\theta_{\rm opt}} = 0~~\forall\theta_j\in\theta.
 \end{equation}
 
 Note that we have implicitly assumed $\chi^2(\theta,S)$ is a $C^1$ differentiable 
-function of $\theta$, which requires that both $\mathbf{M}$ and $\mathbf{M}^2$ are 
-$C^1$ differentiable functions. Though this assumption could be violated if we 
+function of $\theta$, which requires that $\mathbf{M}$ is a
+$C^1$ differentiable function. Though this assumption could be violated if we 
 considered a more complete set of templates, (e.g. a box function), our restriction 
-to truncated Fourier series guarantees that both $\mathbf{M}$ and $\mathbf{M}^2$ 
-are $C^1$ differentiable and thus that $\chi^2(\theta,S)$ is $C^1$ differentiable.
+to truncated Fourier series ensures that $\mathbf{M}$ is
+ $C^1$ differentiable and thus that $\chi^2(\theta,S)$ is $C^1$ differentiable.
+
+Note that we also implicitly assume $\sigma_i > 0$ for all $i$ and we will later
+assume that the variance of the observations $y_i$ is non-zero. If there are no
+measurement errors, i.e. $\sigma_i = 0$ for all $i$, then uniform weights
+(setting $\sigma_i = 1$) should be used. If the variance of the observations $y$ 
+is zero, the periodogram is trivial and will be zero for all frequencies. We do not
+consider the case where $\sigma_i = 0$ for some observations $i$ and $\sigma_j > 0$ for
+some observations $j$. In that case, the weighted least squares estimator is undefined.
 
 We can derive a system of equations for $\theta_{\rm opt}$ from the condition given 
-in Equation \ref{eq:chi2conds}. The explicit condition that must be met for each parameter $\theta_i$ is simplified below
+in Equation \ref{eq:chi2conds}. The explicit condition that must be met for each parameter $\theta_j$ is simplified below,
+using 
+
+\begin{equation}
+\hat{y}_i = \hat{y}(\omega t_i | \theta)
+\end{equation}
+
+\noindent and
+
+\begin{equation}
+\partial_j\hat{y}_i = \left.\frac{\partial \hat{y}(\omega t|\theta)}{\partial \theta_j}\right|_{t = t_i}
+\end{equation}
+
+\noindent for brevity:
 
 \begin{equation}\label{eq:simpconds}
 \begin{split}
-0 &= \left.\frac{\partial\chi^2}{\partial\theta_i}\right|_{\theta=\theta_{\rm opt}}\\
-  &= -2\sum_n w_n(y_n - \hat{y})\frac{\partial\hat{y}}{\partial \theta_i} \\
-\sum_n w_ny_n\left(\frac{\partial\hat{y}}{\partial \theta_i}\right)_n &= \sum_n w_n \hat{y}_n \left(\frac{\partial\hat{y}}{\partial \theta_i}\right)_n.
+0 &= \left.\frac{\partial\chi^2}{\partial\theta_j}\right|_{\theta=\theta_{\rm opt}}\\
+  &= -2\sum_i w_i\left(y_i - \hat{y}_i \right)(\partial_j\hat{y})_i \\
+\sum_i w_iy_i(\partial_j\hat{y})_i&= \sum_i w_i \hat{y}_i(\partial_j\hat{y})_i.
 \end{split}
 \end{equation}
 
 The above is a general result that extends to all least squares periodograms.
-To hopefully make our derivations more intuitive, we adopt the following notation:
+To simplify derivations, we adopt the following notation:
 
 \begin{eqnarray}
-\savg{X} &\equiv& \sum_n w_n X_n\\
-\savg{XY} &\equiv& \sum_n w_n X_nY_n\\
-\svar(X) &\equiv& \savg{X^2} - \left<X\right>^2\\
-\scov(X, Y) &\equiv& \savg{XY} - \savg{X}\savg{Y}
+\savg{X} &\equiv& \sum_i w_i X_i\\
+\savg{XY} &\equiv& \sum_i w_i X_iY_i\\
+\scov(X, Y) &\equiv& \savg{XY} - \savg{X}\savg{Y}\\
+\svar(X) &\equiv& \scov(X, X)
 \end{eqnarray}
 
-In addition, we denote shifted template $\mathbf{M}(x - \theta_2)$ by $\Mshft(x)$.
+In addition, we denote the shifted template $\mathbf{M}(x - \theta_2)$ by $\Mshft(x)$.
 
 For the amplitude and offset model parameters ($\theta_1$ and $\theta_3$, respectively), 
 we obtain the following relations from Equation \ref{eq:simpconds}
 
 \begin{eqnarray}
     \savg{y\Mshft(\omega t)} &=& \theta_1\savg{\Mshft^2(\omega t)} + \theta_3\savg{\Mshft(\omega t)}\\
-    \theta_3 &=& \bar{y} - \theta_1\savg{\Mshft(\omega t)}.
+    \label{eq:th3cond}
+    \theta_3 &=& \bar{y} - \theta_1\savg{\Mshft(\omega t)},
 \end{eqnarray}
 
-Combining these expressions yields
+\noindent where $\bar{y}\equiv \savg{y}$. Combining these expressions yields
 
 \begin{equation}\label{eq:th13eq}
 \theta_1 = \frac{\savg{(y - \bar{y})\Mshft(\omega t)}}{\svar(\Mshft(\omega t))}.
@@ -314,6 +345,7 @@ Combining these expressions yields
 For the offset parameter $\theta_2$, 
 
 \begin{equation}
+\label{eq:mshftdef1}
  \begin{split}
      \frac{\partial\hat{y}}{\partial\theta_2} &= \theta_1\frac{\dMshft}{\partial\theta_2}\\
      &= -\theta_1\dMshft,
@@ -326,14 +358,14 @@ For the offset parameter $\theta_2$,
  \dMshft(x) = \sum_n \left[s_n\cos{n(x - \theta_2)} - c_n\sin{n(x - \theta_2)}\right].
 \end{equation}
  
-From this we obtain
+From Equations \ref{eq:simpconds}, \ref{eq:th3cond}, and \ref{eq:mshftdef1} we obtain
 
 \begin{equation}\label{eq:th2eq}
  \theta_1 = \frac{\savg{(y - \bar{y})\dMshft(\omega t)}}{\scov\left(\Mshft(\omega t),\dMshft(\omega t)\right)},
 \end{equation}
 
 \noindent which, combined with Equation \ref{eq:th13eq}, provides 
-a non-linear expression for $\theta_2$:
+a non-linear condition for $\theta_2$:
 
 \begin{equation}\label{eq:th2cond}
 \begin{split}
@@ -353,7 +385,8 @@ YC_n &\equiv& \savg{(y - \bar{y})\cos{n\omega t}}\label{eq:YCdef}\\
 YS_n &\equiv& \savg{(y - \bar{y})\sin{n\omega t}}\label{eq:YSdef},
 \end{eqnarray}
 
-\noindent all of which can be evaluated efficiently with NFFTs. We also obtain
+\noindent all of which can be evaluated quickly for every trial frequency 
+$\omega$ with the use of NFFTs. We also obtain
 an expression for the shifted template:
 
 \begin{equation}
@@ -361,11 +394,11 @@ an expression for the shifted template:
     \Mshft(x) &= \sum_n \left[c_n\cos{n(x - \theta_2)} + s_n\sin{n(x - \theta_2)}\right]\\
     %\Mshft(x) &= \sum_n \left[c_n\left(\cos{nx}\cos{n\theta_2} + \sin{nx}\sin{n\theta_2}\right)\right. \\
     %        &\qquad\quad\left. + s_n\left(\sin{nx}\cos{n\theta_2} - \cos{nx}\sin{n\theta_2}\right)\right]\\
-    \Mshft(x) &= \sum_n \left[\left(c_n\cos{n\theta_2} - s_n\sin{n\theta_2}\right)\cos{nx} \right.\\
+              &= \sum_n \left[\left(c_n\cos{n\theta_2} - s_n\sin{n\theta_2}\right)\cos{nx} \right.\\
               &\qquad\quad \left. + \left(s_n\cos{n\theta_2} + c_n\sin{n\theta_2}\right)\sin{nx}\right]\\
-    \Mshft(x) &= \sum_n \left[\left(c_nT_n(u) \mp s_n\sqrt{1 - u^2}U_{n-1}(u)\right)\cos{nx} \right.\\
+              &= \sum_n \left[\left(c_nT_n(u) \mp s_n\sqrt{1 - u^2}U_{n-1}(u)\right)\cos{nx} \right.\\
               &\qquad\quad \left. + \left(s_nT_n(u) \pm c_n\sqrt{1 - u^2}U_{n-1}(u)\right)\sin{nx}\right]\\
-    \Mshft(x) &= \sum_n \left[A_n(u)\cos{nx} + B_n(u)\sin{nx}\right]
+              &= \sum_n \left[A_n(u)\cos{nx} + B_n(u)\sin{nx}\right]
 \end{split}
 \end{equation}
 
@@ -397,7 +430,7 @@ Einstein summation notation, we have that
 \begin{align}
 \savg{(y - \bar{y})\Mshft} &= A_n YC^n + B_n YS^n\\
 \savg{(y - \bar{y})\dMshft} &= \dA_n YC^n + \dB_n YS^n\\
-\svar(\Mshft^2) &= 
+\svar(\Mshft) &= 
 \begin{aligned}[t]
 &A_nA_m CC^{nm} \\
 & + 2A_nB_m CS^{nm}
@@ -417,12 +450,12 @@ Equation \ref{eq:th2cond} now becomes
 \begin{align}\label{eq:polynomial}
 0 &= 
 \begin{aligned}[t]
-&\quad A_iA_j\dA_k\left(YC^iCC^{jk} -  YC^kCC^{ji}\right)\\
-&+ A_iA_j\dB_k\left(YC^iCS^{jk} - YS^kCC^{ji}\right)\\
-&+ A_iB_j\dA_k\left(YC^iCS^{kj} + YS^jCC^{ki}\right)\\
-&+ A_iB_j\dB_k\left(YC^iSS^{jk} + YS^jCS^{ik}\right)\\
-&+ B_iB_j\dA_k\left(YS^iCS^{kj} - YC^kSS^{ij}\right)\\
-&+ B_iB_j\dB_k\left(YS^iSS^{jk} - YS^kSS^{ji}\right).
+&\quad A_nA_m\dA_k\left(YC^nCC^{mk} -  YC^kCC^{mn}\right)\\
+&+ A_nA_m\dB_k\left(YC^nCS^{mk} - YS^kCC^{mn}\right)\\
+&+ A_nB_m\dA_k\left(YC^nCS^{km} + YS^mCC^{kn}\right)\\
+&+ A_nB_m\dB_k\left(YC^nSS^{mk} + YS^mCS^{nk}\right)\\
+&+ B_nB_m\dA_k\left(YS^nCS^{km} - YC^kSS^{nm}\right)\\
+&+ B_nB_m\dB_k\left(YS^nSS^{mk} - YS^kSS^{mn}\right).
 \end{aligned}
 \end{align}
 %\end{widetext}
@@ -430,7 +463,7 @@ Equation \ref{eq:th2cond} now becomes
 Each $AA\dA$, $AA\dB$, ..., $BB\dB$ can be expressed as 
 
 \begin{equation}
-AA\dA,~AA\dB,~...= p(u) \pm (1 - u^2)^{-1/2}q(u),
+AA\dA,~AA\dB,~...= p(u) + (1 - u^2)^{-1/2}q(u),
 \end{equation}
 
 \noindent where both $p(u)$ and $q(u)$ are polynomials in $u$. Therefore, Equation
@@ -447,23 +480,67 @@ We have derived an explicit, non-linear system of equations to solve for
 the parameters $\theta_1$, $\theta_2$, and $\theta_3$. Solving this system of equations
 requires finding the zeros of a polynomial $\hat{P}(u)$ at the given trial frequency.
 
-\subsection{Extending to multi-band observations}
 
+\subsection{Negative amplitude solutions}
+The model $\hat{y}= \theta_1\Mshft + \theta_0$ allows for $\theta_1 < 0$ solutions. 
+In the original formulation of Lomb-Scargle and in linear
+extensions involving multlple harmonics, negative amplitudes translate to
+phase differences, since $-\cos{x} = \cos(x - \pi)$ and $-\sin{x} = \sin(x - \pi)$.
+
+However, for non-sinusoidal templates, $\mathbf{M}$, negative amplitudes
+do not generally correspond to a phase difference. For example, a 
+detached eclipsing binary template $\mathbf{M}_{\rm EB}(x)$ cannot be 
+expressed in terms of a phase-shifted negative eclipsing binary template; i.e.
+$\mathbf{M}_{\rm EB} \neq -\mathbf{M}_{\rm EB}(x - \phi)$ for any $\phi\in[0, 2\pi)$.
+
+Negative amplitude solutions found by the fast template periodogram are usually
+undesirable, as they may produce false positives for lightcurves that resemble
+flipped versions of the desired template, and allowing for $\theta_1 < 0$ solutions
+increases the number of effective free parameters of the model, which lowers
+the signal to noise, especially for weak signals.
+
+One possible remedy for this problem is to set $P_{\rm FTP}(\omega) = 0$ if the optimal
+solution for $\theta_1$ is negative, but this complicates the interpretation of $P_{\rm FTP}$.
+Another possible remedy is, for frequencies that have a $\theta_1 < 0$ solution, 
+to search for the optimal parameters while enforcing that $\theta_1 > 0$,
+e.g. via non-linear optimization, but this likely will eliminate the computational
+advantage of FTP over existing methods.
+
+Thus, we allow for negative amplitude solutions in the model fit and caution
+the user to check that the best fit $\theta_1$ is positive. Negative amplitude
+solutions may only be a problem for 
+
+\begin{itemize}
+\item Weak signals
+\item Signals that, when flipped, are similar to other astrophysical signals
+\item Signals dominated by the first harmonic ($c_1^2 + s_1^2 \gg c_n^2 + s_n^2$ for $n > 1$).
+\end{itemize}
+
+
+\subsection{Extending to multi-band observations}
+\label{sec:multiband}
 As shown in \cite{Vanderplas+Ivezic_2015}, the multi-phase periodogram (their 
 $(N_{\rm base}, N_{\rm band}) = (0, 1)$ periodogram), for any model can
 be expressed as a linear combination of single-phase periodograms:
 
 \begin{equation}
 \label{eq:multiband}
-P^{(0,1)} = \frac{\sum_{k=1}^K\chi^2_{0, k}P_{k}}{\sum_{k=1}^K\chi^2_{0,k}}
+P^{(0,1)}(\omega) = \frac{\sum_{k=1}^K\chi^2_{0, k}P_{k}(\omega)}{\sum_{k=1}^K\chi^2_{0,k}}
 \end{equation} 
 
-\noindent where $K$ denotes the number of bands. This means that the template
-periodogram can be applied to multi-band time series, which is crucial for
-experiments like LSST, SDSS, Pan-STARRS, and other current and future surveys.
+\noindent where $K$ denotes the number of bands, $\chi^2_{0,k}$ is the weighted sum of squared
+residuals between the data in the $k$-th band and its weighted mean $\savg{y}$, and $P_k(\omega)$ is
+the periodogram value of the $k$-th band at the trial frequency $\omega$. 
+
+With Equation \ref{eq:multiband}, the template periodogram is readily applicable to multi-band 
+time series, which is crucial for experiments like LSST, SDSS, Pan-STARRS, and other current 
+and future photometric surveys.
 
 
-
+\subsection{Fitting linear combinations of templates simultaneously}
+As a corollary of Section \ref{sec:multiband}, several templates may
+be fit to the data simultaneously (with independent phases and amplitudes)
+using Equation \ref{eq:multiband}
 
 \subsection{Computational requirements}
 
@@ -473,12 +550,12 @@ requiring $\bigO(n_{\hat{P}})$ operations, where $n_{\hat{P}}$ is the order
 of $\hat{P}$. The order of $\hat{P}$ can be shown to be
 
 \begin{equation}
-6H - {\rm gcf}\left((1 - u^2)\star\hat{p}^2, \hat{q}^2\right) \propto H,
+6H - {\rm deg}\left({\rm gcf}\left((1 - u^2)\star\hat{p}^2, \hat{q}^2\right)\right) \propto H,
 \end{equation}
 
 \noindent where ${\rm gcf}(p_1, p_2)$ denotes the greatest common polynomial factor
-between polynomials $p_1$ and $p_2$. Computing the coefficients of $\hat{P}$ therefore
-scales as $\bigO(H^4)$ at each trial frequency. 
+between polynomials $p_1$ and $p_2$, and ${\rm deg}(p)$ denotes the degree of polynomial $p$. 
+Computing the coefficients of $\hat{P}$ therefore scales as $\bigO(H^4)$ at each trial frequency. 
 
 The computational complexity of polynomial root finding
 is algorithm dependent. If we choose to perform singular value decomposition of
@@ -499,7 +576,7 @@ Therefore, the entire template periodogram scales as
 
 \begin{figure}
     \centering
-    \includegraphics[width=0.5\textwidth]{plots/timing_vs_nharm.png}
+    \includegraphics[width=0.5\textwidth]{plots/timing_vs_nharm.pdf}
     \caption{\label{fig:timingnharm} Computation time of FTP scaled by $NH$ for
             different numbers of harmonics. For $H\lesssim 3$, FTP scales
             sublinearly in $H$ (possibly due to a constant overhead per
@@ -518,7 +595,7 @@ alone limit $H$ to reasonably small numbers $H\lesssim15$ (see Figure \ref{fig:t
 
 \begin{figure*}
     \centering
-    \includegraphics[width=\textwidth]{plots/templates_and_periodograms.png}
+    \includegraphics[width=\textwidth]{plots/templates_and_periodograms.pdf}
     \caption{\label{fig:tempsandpdgs} Template periodograms performed on a simulated eclipsing
             binary lightcurve (shown phase-folded in the left-hand plots). The top-most plot 
             uses only one harmonic, equivalent to a Lomb-Scargle periodogram. Subsequent plots
@@ -569,20 +646,20 @@ with a 10-harmonic truncated Fourier series.
 
 \subsubsection{Accuracy}
 
-\begin{figure*}
+\begin{figure}
     \centering
-    \includegraphics[width=\textwidth]{plots/correlation_with_gatspy.png}
+    \includegraphics[width=0.5\textwidth]{plots/correlation_with_gatspy.pdf}
     \caption{\label{fig:corrwgats} Comparing the gatspy template periodogram with 
             the FTP using the same simulated data as shown in Figure \ref{fig:tempsandpdgs}.
-            When $H$ is sufficiently large, FTP consistently finds more optimal template
-            fits than Gatspy. Gatspy numerically minimizes the $\chi^2$ at each frequency,
+            FTP consistently finds more optimal template fits than Gatspy. Gatspy numerically 
+            minimizes the $\chi^2$ at each frequency,
             and sometimes gets caught in a local minimum. The FTP solves for the optimal
             fit parameters directly, and therefore is able to achieve greater accuracy than Gatspy.}
-\end{figure*}
+\end{figure}
 
 \begin{figure*}
     \centering
-    \includegraphics[width=\textwidth]{plots/correlation_with_large_H.png}
+    \includegraphics[width=\textwidth]{plots/correlation_with_large_H.pdf}
     \caption{\label{fig:corrwhighh} Comparing the template periodogram calculated with $H=10$ harmonics
             to the template periodogram using a smaller number of harmonics $H < 10$. The template and
             data used to perform the periodogram calculations are the same as those shown in Figure \ref{fig:tempsandpdgs}.}    
@@ -615,7 +692,7 @@ periodogram for known, non-sinusoidal signal shapes.
 
 \begin{figure}
     \centering
-    \includegraphics[width=0.5\textwidth]{plots/timing_vs_ndata.png}
+    \includegraphics[width=0.5\textwidth]{plots/timing_vs_ndata.pdf}
     \caption{\label{fig:timingndata} Computation time of FTP compared with Gatspy. For a 6-harmonic
              template and 15 observations, the FTP is three times faster than 
              Gatspy. FTP scales roughly as $\bigO(N)$ (or, for large enough values
@@ -692,7 +769,7 @@ SuperWASP  & $3.2\times 10^7$  &  13,870       &       \\
 \hline
 OGLE-IV    &           $10^9$  &  5000         &       \\
 \hline
-LSST       & $3.7\times 10^10$ &  825          &       \\
+LSST       & $3.7\times 10^{10}$ &  825          &       \\
 \hline
 \end{tabular}
 \caption{\label{tab:surveypars} Survey parameters used for Figure \ref{fig:surveys}.
@@ -701,7 +778,7 @@ LSST       & $3.7\times 10^10$ &  825          &       \\
 
 \begin{figure}
 \centering
-\includegraphics[width=0.5\textwidth]{plots/timing_for_various_surveys.png}
+\includegraphics[width=0.5\textwidth]{plots/timing_for_various_surveys.pdf}
 \caption{\label{fig:surveys} Computational resources needed for performing 
 a single template periodogram ($H=6$) on an entire survey dataset. Our
 python implementation of FTP improves computational efficiency of template 
