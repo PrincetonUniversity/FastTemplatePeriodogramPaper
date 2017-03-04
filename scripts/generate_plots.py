@@ -140,7 +140,8 @@ def clean_up_figure(f, settings):
 	# save
 	if not settings['fname'] is None:
 		fname = os.path.join(settings['plot_dir'], settings['fname'])
-		f.savefig(fname, dpi=settings['dpi'])
+		#f.savefig(fname, dpi=settings['dpi'])
+		f.savefig(fname)
 
 def clean_up_axis(ax, settings):
 
