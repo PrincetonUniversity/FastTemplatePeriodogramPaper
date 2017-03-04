@@ -1,3 +1,4 @@
+
 # get current version
 VERSION_=`cat VERSION.txt`
 
