@@ -1,9 +1,7 @@
-name=proceedings_v`cat PROC_VERSION.txt`
+name=proceedings_fast_template_periodogram
 
 all : 
 	pdflatex $(name)
-	pdflatex $(name)
-	bibtex $(name)
 	bibtex $(name)
 	pdflatex $(name)
 	pdflatex $(name)

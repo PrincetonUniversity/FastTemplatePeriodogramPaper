@@ -10,12 +10,10 @@ from matplotlib.patches import Rectangle
 from matplotlib.ticker import MultipleLocator, FixedLocator, FixedFormatter
 from gatspy.periodic import RRLyraeTemplateModeler, LombScargleFast, LombScargle
 import gatspy.datasets as datasets
-import pyftp.rrlyrae as rrlm
-from pyftp.modeler import FastTemplateModeler, Template, normfac, rms_resid_over_rms_fast
-from pyftp.gatspy_template_modeler import GatspyTemplateModeler
+from ftperiodogram.modeler import FastTemplatePeriodogram, SlowTemplatePeriodogram
+from ftperiodogram.template import Template
 from scipy.interpolate import interp1d
 from scipy.stats import pearsonr
-import pyftp.fast_template_periodogram as ftp
 from collections import namedtuple
 
 plt.style.use('./ggplot-like.mplstyle')
@@ -96,25 +94,15 @@ def flatten(iterable):
 			out.append(i)
 	return out
 	
-def generate_random_signal(n, sigma=1.0, freq=1.0, ttemp=None, ytemp=None, cn=None, sn=None):
+def generate_random_signal(n, sigma=1.0, freq=1.0, template=None):
 	x = np.sort(np.random.rand(n))
 	dy = sigma * np.random.normal(size=n, loc=0)
-	y = None
-	err = np.ones(n) * sigma
+	err = np.ones_like(x) * sigma
 
-	if not ttemp is None:
-		ttemp_ = list(ttemp[:])
-		ytemp_ = list(ytemp[:])
-		if all([ t < 1.0 for t in ttemp_ ]):
-			ttemp_.append(1.0)
-			ytemp_.append(ytemp_[0])
-		tmodel = interp1d(ttemp_, ytemp_)
-		y = tmodel(((x * freq)%1.0)) + dy
-	elif not cn is None:
-		dfunc = lambda X : ftp.fitfunc(X, 1, freq * 2 * np.pi, cn, sn, 2.0, 0.0, 1.0)
-		y = dfunc(x) + dy
-	else:
-		y = np.cos(freq * x) + dy
+	y = np.cos(freq * x)
+	if not template is None:
+		y = template(x * freq) + dy
+
 	return x, y, err	
 
 
@@ -186,16 +174,15 @@ def open_results(name, settings, mode):
 
 
 
-def get_default_template():
+def get_default_template(nharmonics=5):
 	rrl_templates = datasets.rrlyrae.fetch_rrlyrae_templates()
 	xt, yt = rrl_templates.get_template('100r')
 
-	template = Template(phase=xt[::-1], y=yt[::-1], nharmonics=1,
-		                    errfunc=rms_resid_over_rms_fast)
+	template = Template.from_sampled(yt, nharmonics=nharmonics)
 	return template
 
 
-def get_timing_vs_nharmonics(x, y, yerr, hvals, template = None, filename=None, overwrite=True,
+def get_timing_vs_nharmonics(x, y, yerr, hvals, filename=None, overwrite=True,
 								only_use_saved_data = False):
 
 	# load old results
@@ -211,24 +198,20 @@ def get_timing_vs_nharmonics(x, y, yerr, hvals, template = None, filename=None, 
 	if only_use_saved_data:
 		return zip(*[ (h, results[h]) for h in hvals if h in results ])
 
-	# retrieve rr lyrae template
-	if template is None:
-		template = get_default_template()
-		
-
-	template.precompute()
-
 	for h in hvals:
 		if h in results:
 			continue
 
 		print "   H = ", h
+
+		template = get_default_template(nharmonics=h)
+		template.precompute()
 		
-		model = FastTemplateModeler(templates=template.set_nharmonics(h))
+		model = FastTemplatePeriodogram(template=template)
 		model.fit(x, y, yerr)
 
 		t0 = time()
-		model.periodogram()
+		model.autopower()
 		results[h] = time() - t0
 
 		print "   %.4f seconds"%(results[h])
@@ -271,10 +254,10 @@ def select_from_dict(tdict, values, col='ndata'):
 
 	return tcopy
 
-def get_timing_vs_ndata(nvals, nharmonics, template=None, filename=None, overwrite=True, 
+def get_timing_vs_ndata(nvals, nharmonics, filename=None, overwrite=True, 
 						time_gatspy=True, only_use_saved_data=False, time_lomb_scargle=False):
-	if template is None:
-		template = get_default_template()
+	#if template is None:
+	template = get_default_template(nharmonics=nharmonics)
 	template.precompute()
 
 	# load saved results
@@ -303,11 +286,11 @@ def get_timing_vs_ndata(nvals, nharmonics, template=None, filename=None, overwri
 		# time FTP
 		print("timing: n = %d, h = %d, ftp"%(n, nharmonics))
 
-		model = FastTemplateModeler(templates=template.set_nharmonics(nharmonics))
+		model = FastTemplatePeriodogram(template=template)
 		model.fit(x, y, dy)
 
 		t0 = time()
-		frq, p = model.periodogram()
+		frq, p = model.autopower()
 		results['tftp'].append( time() - t0 )
 
 		print("   done in %.4f seconds"%(results['tftp'][-1]))
@@ -317,11 +300,11 @@ def get_timing_vs_ndata(nvals, nharmonics, template=None, filename=None, overwri
 			# time GATSPY
 			print("timing: n = %d, gatspy"%(n))
 
-			model = GatspyTemplateModeler(templates=template)
+			model = SlowTemplatePeriodogram(template=template)
 			model.fit(x, y, dy)
 
 			t0 = time()
-			p = model.periodogram(np.power(frq[::-1], -1))
+			p = model.power(frq)
 			results['tgats'].append(time() - t0)
 
 			print("   done in %.4f seconds"%(results['tgats'][-1]))
@@ -337,6 +320,62 @@ def get_timing_vs_ndata(nvals, nharmonics, template=None, filename=None, overwri
 			pickle.dump(results, open(filename, 'wb'))
 
 	return select_from_dict(results, nvals)
+
+def get_timing_vs_ndata_at_const_nfreq(nvals, nharmonics, max_freq, filename=None, overwrite=True, time_slow=True):
+
+	#if template is None:
+	template = get_default_template(nharmonics=nharmonics)
+	template.precompute()
+
+	# load saved results
+	results = {}
+	if filename is None:
+		filename = './saved_results/timing_results_nh%d_maxfrq%.1f.pkl'%(nharmonics, max_freq)
+	if not filename is None and os.path.exists(filename):
+		old_results = pickle.load(open(filename, 'rb'))
+		results.update(old_results)
+
+	
+	for n in nvals:
+		if n in results:
+			continue 
+
+		x, y, dy = generate_random_signal(n)
+		x[0] = 0
+		x[-1] = 1
+
+		# time FTP
+		print("timing: n = %d, h = %d, ftp"%(n, nharmonics))
+
+		model = FastTemplatePeriodogram(template=template)
+		model.fit(x, y, dy)
+
+		t0 = time()
+		frq, p = model.autopower(maximum_frequency=max_freq)
+		tftp = time() - t0
+
+		print("   done in %.4f seconds"%(tftp))
+
+		if time_slow:
+			print("timing: n = %d, h = %d, slow"%(n, nharmonics))
+			model = SlowTemplatePeriodogram(template=template)
+			model.fit(x, y, dy)
+
+			t0 = time()
+			p = model.power(frq)
+			tslow = time() - t0
+
+			print("   done in %.4f seconds"%(tslow))
+		else:
+			tslow = -1
+
+		results[n] = (tftp, tslow)
+
+		# save
+		if not filename is None and overwrite:
+			pickle.dump(results, open(filename, 'wb'))
+
+	return zip(*[ results[n] for n in nvals ])
 
 HVAL_WITH_GATSPY_TIMING_DATA = 6
 def plot_timing_vs_ndata(settings=default_settings):
@@ -398,7 +437,7 @@ def plot_timing_vs_ndata(settings=default_settings):
 
 		if time_gatspy:
 
-			ax.scatter(ndata, tgats,  label='Gatspy', **settings['scatter_params_gatspy'])
+			ax.scatter(ndata, tgats,  label='Non-linear optimization', **settings['scatter_params_gatspy'])
 			ax.plot(ndata, tgats, color=settings['scatter_params_gatspy']['c'], 
 				                                        lw=settings['linewidth'])
 
@@ -424,7 +463,77 @@ def plot_timing_vs_ndata(settings=default_settings):
 	clean_up_axis(ax, settings)
 	clean_up_figure(f, settings)
 
+def plot_timing_vs_ndata_const_freq(settings=default_settings):
+
+	f, ax = plt.subplots(figsize=(settings['axsize'], settings['axsize']))
 	
+	settings = translate_color(ax, settings)
+
+	#fname = os.path.join(settings['results_dir'], settings['timing_filename'])
+
+	nharms = settings['nharmonics']
+	if not hasattr(nharms, '__iter__'):
+		nharms = [ nharms ]
+	
+
+	x, y, dy = generate_random_signal(10)
+	x[0] = 0
+	x[-1] = 1
+	xoffset = 0.08 * (settings['xlim'][1] - settings['xlim'][0])
+	nfrq = len(FastTemplatePeriodogram().fit(x, y, dy).autofrequency(maximum_frequency=settings['max_freq']))
+	for i, h in enumerate(nharms):
+		time_slow = (h==3)
+		tftp, tslow =  get_timing_vs_ndata_at_const_nfreq(settings['ndata'], h,  
+										settings['max_freq'], time_slow=time_slow)
+
+
+		label = None if h < max(nharms) else 'Fast template periodogram'
+		color = settings['scatter_params_ftp']['c']
+		lw    = settings['linewidth']
+		spars = {}
+		spars.update(settings['scatter_params_ftp'])
+		fudge = 0.7
+		ls = '-' if h == max(nharms) else ':'
+		#ls = '-'
+		q = 1.
+		if len(nharms) > 1:
+			q = float(h - min(nharms)) / float(max(nharms) - min(nharms))
+
+		spars['alpha'] = fudge * q + (1 - fudge)
+
+		ax.scatter(settings['ndata'], tftp, label=label, **spars)
+		ax.plot(settings['ndata'], tftp, color=color, lw=lw, alpha=spars['alpha'], ls=ls)
+
+		# now label this
+
+		ax.text(settings['ndata'][-1] + xoffset, tftp[-1], "$H = %d$"%(h), ha='left', va='center', 
+			       color=settings['font_color'], fontsize=settings['annotation_fontsize'],
+			       bbox=settings['bbox'])
+
+		if time_slow:
+
+			ax.scatter(settings['ndata'], tslow,  label='Non-linear optimization', **settings['scatter_params_nonlin'])
+			ax.plot(settings['ndata'], tslow, color=settings['scatter_params_nonlin']['c'], 
+				                                        lw=settings['linewidth'])
+
+
+	ax.text(0.05, 0.7, "$N_f=%d$"%(nfrq), ha='left', va='top', transform=ax.transAxes)
+	ax.set_xlabel('Number of datapoints')
+	ax.set_ylabel("Execution time [s]")
+
+	
+	ax.set_xscale('log')
+	ax.set_yscale('log')
+
+	ax.set_xlim(*settings['xlim'])
+	ax.set_ylim(*settings['ylim'])
+
+	ax.legend(loc=settings['legend_loc'])
+
+	adjust_figure(f, settings)
+	clean_up_axis(ax, settings)
+	clean_up_figure(f, settings)
+
 
 def plot_timing_vs_nharmonics(settings=default_settings):
 	f, ax = plt.subplots(figsize=(settings['axsize'], settings['axsize']))
@@ -461,16 +570,18 @@ def plot_timing_vs_nharmonics(settings=default_settings):
 		#print settings['bbox']
 
 		y = np.array(dt)
+		nf = int(0.5 * 5 * 5 * n)
+
 		if settings['divide_by'] == "NH":
-			y /= n * np.array(nh)
+			y /= nf * np.array(nh)
 		elif settings['divide_by'] == "N":
-			y /= n
+			y /= nf
 
 		#print settings['scatter_params']
 		spars = settings['scatter_params']["%d"%(n)]
 		zorder = spars['zorder']
 
-		ax.scatter(nh, y, label="%3d datapoints"%(n), **spars)
+		ax.scatter(nh, y, label="$N_{\\rm obs} = %d$\n$N_f=%d$"%(n, nf), **spars)
 		lpars = settings['line_params']['%d'%(n)]
 
 		ax.plot(nh, y, zorder = zorder - 1, **lpars)
@@ -478,8 +589,8 @@ def plot_timing_vs_nharmonics(settings=default_settings):
 		ax.plot(nh, y, zorder = 7, color=ax.get_facecolor(), lw=8)
 
 	# add label for normalization
-	divtxt = " / $(N \\times H)$" if settings['divide_by'] == "NH"\
-	   else (" / $N$"             if settings['divide_by'] == "N" \
+	divtxt = " / $(H \\times N_f)$" if settings['divide_by'] == "NH"\
+	   else (" / $N_f$"             if settings['divide_by'] == "N" \
 	    else "")
 
 	# add axis labels
@@ -569,24 +680,27 @@ def plot_timing_vs_nharmonics(settings=default_settings):
 			           color=settings['font_color'], bbox=settings['bbox'])
 
 
-	ax.legend(loc=settings['legend_loc'])
+	ax.legend(loc=settings['legend_loc'], ncol=2, mode='expand')
+	#ax.legend(loc=3, bbox_to_anchor=(0., 1.02, 1., .102), mode='expand')
 
 	clean_up_axis(ax, settings)
 	adjust_figure(f, settings)
 	clean_up_figure(f, settings)
 
-def plot_accuracy(x, y, yerr, template, nharmonics, compare_with=10, settings=default_settings):
+def plot_accuracy(x, y, yerr, y_temp, nharmonics, compare_with=10, settings=default_settings):
 
+	template = Template.from_sampled(y_temp, nharmonics=10)
 
 	# if comparing to large nharmonics, set template now
 	if isinstance(compare_with, float) or isinstance(compare_with, int):
-		template.nharmonics = int(compare_with)
+		template = Template.from_sampled(y_temp, nharmonics=int(compare_with))
+		#template.nharmonics = int(compare_with)
 		template.precompute()
 
 	# Set the reference model
-	true_model = GatspyTemplateModeler(templates=template) \
-	               if compare_with == 'gatspy' \
-	                  else FastTemplateModeler(templates=template)
+	true_model = SlowTemplatePeriodogram(template=template) \
+	               if compare_with == 'slow_version' \
+	                  else FastTemplatePeriodogram(template=template)
 
 	# fit data
 	true_model.fit(x, y, yerr)
@@ -599,30 +713,30 @@ def plot_accuracy(x, y, yerr, template, nharmonics, compare_with=10, settings=de
 
 	# store results from the reference model 
 	# (if the reference model is FastTemplatePeriodogram)
-	if isinstance(true_model, FastTemplateModeler):
-		frq, p_ans = true_model.periodogram()
+	if isinstance(true_model, FastTemplatePeriodogram):
+		frq, p_ans = true_model.autopower()
 		results = { 'ans' : (frq, p_ans) }
 
 	# add results from all desired harmonics
 	for h in nharmonics:
 
 		# set template harmonics
-		template.nharmonics = h 
+		#template.nharmonics = h 
+		template = Template.from_sampled(y_temp, nharmonics=h)
 		template.precompute()
 
 		# create & fit modeler
-		model = FastTemplateModeler(templates=template)
+		model = FastTemplatePeriodogram(template=template)
 		model.fit(x, y, yerr)
 
 		# compute periodogram
-		results[h] = model.periodogram()
+		results[h] = model.autopower()
 
 		# compute results for reference model 
 		# (if the reference model is gatspy)
-		if not 'ans' in results and isinstance(true_model, GatspyTemplateModeler):
+		if not 'ans' in results and isinstance(true_model, SlowTemplatePeriodogram):
 			frq = results[h][0]
-			periods = np.power(frq[::-1], -1)
-			p_ans = true_model.periodogram(periods)[::-1]
+			p_ans = true_model.power(frq)
 			results['ans'] = (frq, p_ans)
 
 	# Set up plot geometry
@@ -646,7 +760,7 @@ def plot_accuracy(x, y, yerr, template, nharmonics, compare_with=10, settings=de
 		axes = [ axes ]
 
 	# some plotting definitions
-	ans_label = label_formatter('gatspy') if compare_with == 'gatspy'\
+	ans_label = label_formatter('slow') if compare_with == 'slow_version'\
 					else label_formatter('FTP', int(compare_with))
 
 	ax_label_params = dict(fontsize=settings['label_fontsize'], 
@@ -675,13 +789,14 @@ def plot_accuracy(x, y, yerr, template, nharmonics, compare_with=10, settings=de
 
 		# many of the gatspy periodogram values are 0; 
 		# write pearson R using only non-zero P_gatspy values
-		if compare_with == 'gatspy':
-			nonzero_p_ans, nonzero_p = zip(*filter(lambda (Pans, P) : Pans > 0, zip(p_ans, p)))
-			Rnonzero = pearsonr(nonzero_p_ans, nonzero_p)[0]
+		#if compare_with == 'slow_version':
+		#	nonzero_p_ans, nonzero_p = zip(*filter(lambda (Pans, P) : Pans > 0, zip(p_ans, p)))
+		#	Rnonzero = pearsonr(nonzero_p_ans, nonzero_p)[0]
 
-			ax.text(0.05, 0.9 - 0.03, "%s; $P_{\\rm gatspy} > 0$"\
-				          %(corrlabel(Rnonzero)),zorder=10,
-				      transform=ax.transAxes, ha='left', va='top', **ax_annotation_params)
+		
+		#	ax.text(0.05, 0.9 - 0.03, "%s; $P_{\\rm non-lin. opt.} > 0$"\
+		#		          %(corrlabel(Rnonzero)),zorder=10,
+		#		      transform=ax.transAxes, ha='left', va='top', **ax_annotation_params)
 
 		# set plot properties
 		ax.set_xlabel(label_formatter('FTP', h), **ax_label_params)
@@ -738,20 +853,24 @@ def get_bls_periodogram(x, y, err, use_pybls=False, hfac=3, ofac=10, nbin=50, qm
 
 	return frq, periodogram
 
-def plot_templates_and_periodograms(model, x, y, err, freq_val=None, nharms = None, settings=default_settings):
+def plot_templates_and_periodograms(x, y, err, y_temp, freq_val=None, hfac=None, ofac=None, 
+									nharms = None, settings=default_settings):
 
 	
 	p_ftps = []
 	phi_data = None if freq_val is None else (x * freq_val - settings['phi0']) % 1.0
 	for i, nharm in enumerate(nharms):
 
-		model.templates.values()[0].nharmonics = nharm
-		model.templates.values()[0].precompute()
+		#model.templates.values()[0].nharmonics = nharm
+		#model.templates.values()[0].precompute()
+		template = Template.from_sampled(y_temp, nharmonics = nharm)
+		template.precompute()
+		model = FastTemplatePeriodogram(template=template)
 
 		# Run FTP
 		model.fit(x, y, err)
 
-		frq, p = model.periodogram()
+		frq, p = model.autopower(samples_per_peak=ofac, nyquist_factor=hfac)
 
 		p_ftps.append(p)
 
@@ -767,7 +886,8 @@ def plot_templates_and_periodograms(model, x, y, err, freq_val=None, nharms = No
 	settings = translate_color(ax_pdg, settings)
 
 	# get full template
-	phi0, y0 = template.phase, template.y
+	phi0 = np.linspace(0, 1, len(y_temp)) 
+	y0 = y_temp
 	ymin, ymax = min(-y0), max(-y0)
 	
 	# x position for text (H = ...); has to be in ax_tmp data coordinates
@@ -843,9 +963,12 @@ def plot_templates_and_periodograms(model, x, y, err, freq_val=None, nharms = No
 
 
 		# get truncated template
-		template.nharmonics = h
+		#template.nharmonics = h
+		template = Template.from_sampled(y_temp, nharmonics=h)
 		template.precompute()
-		phi, ytmp_trunc = template.phase, template.best_fit_y
+
+		phi = np.linspace(0, 1, 100) 
+		ytmp_trunc = template(phi)
 
 		# normalize truncated template
 		ytmp_trunc, _ = tmp_transform(ytmp_trunc, None)
@@ -1073,14 +1196,17 @@ if __name__ == '__main__':
 
 			cn, sn = pickle.load(open_results('template_filename', tconf, 'rb'))
 
-		cn = np.multiply(cn, normfac(cn, sn))
-		sn = np.multiply(sn, normfac(cn, sn))
+		norm = 1./np.sqrt(sum(np.power(cn, 2) + np.power(sn, 2)))
+		cn = np.multiply(cn, norm)
+		sn = np.multiply(sn, norm)
 
-		template = Template(cn=cn, sn=sn, 
-			                 nharmonics=tconf['nharm_answer'])
+		nha = tconf['nharm_answer']
+		template = Template(c_n=cn[:nha], s_n=sn[:nha])
+
+		y_phase = template(np.linspace(0, 1, 100))
 
 		x, y, err = generate_random_signal(ndata, sigma, freq=freq, 
-			                                  cn=cn, sn=sn)
+			                                  template=template)
 		
 	else:
 		if tconf['template_filename'] is None:
@@ -1092,31 +1218,41 @@ if __name__ == '__main__':
 		else:
 			Ttemp, Ytemp = pickle.load(open_results('template_filename', tconf, 'rb'))
 
-		template = Template(phase=Ttemp[::-1], y=Ytemp[::-1], 
-			                 nharmonics=tconf['nharm_answer'])
+		template = Template.from_sampled(Ytemp, nharmonics=tconf['nharm_answer'])
 
-		x, y, err = generate_random_signal(ndata, sigma, freq=freq, 
-			                               ttemp=Ttemp[::-1], ytemp= Ytemp[::-1])
+		x, y, err = generate_random_signal(ndata, sigma, freq=freq, template=template)
 	
 
 	template.precompute()
 
 	# build model
-	model = FastTemplateModeler(ofac=ofac, hfac=hfac, loud=False)
-	model.add_template( template )
+	model = FastTemplatePeriodogram(template=template)
+	y_temp = template(np.linspace(0, 1, 100))
 	
-	
-	plot_timing_vs_nharmonics(conf['timing_vs_nharmonics'])
-	plot_timing_vs_ndata(conf['timing_vs_ndata'])
-	plot_nobs_dt_for_surveys(settings=conf['nobs_dt_for_surveys'])
+	#print("plotting timing vs ndata at constant freq")
+	#plot_timing_vs_ndata_const_freq(settings=conf['timing_vs_ndata_const_freq'])
+
+	#print("plotting timing vs nharmonics")
+	#plot_timing_vs_nharmonics(conf['timing_vs_nharmonics'])
 	#plt.show()
 	#sys.exit()
-	plot_templates_and_periodograms(model, x, y, err, nharms = nh, freq_val=freq, 
-		                                     settings=conf['templates_and_periodograms'])
 
-	plot_accuracy(x, y, err, template, nharms, compare_with=tconf['nharm_answer'], 
-		                                     settings=conf['make_accuracy_plot'])
-	plot_accuracy(x, y, err, template, [ tconf['nharm_answer'] ], compare_with='gatspy', 
-		                                     settings=conf['make_accuracy_plot_with_gatspy'])
+	#print("plotting timing vs ndata")
+	#plot_timing_vs_ndata(conf['timing_vs_ndata'])
+
+	#print("plotting nobs dt for surveys")
+	#plot_nobs_dt_for_surveys(settings=conf['nobs_dt_for_surveys'])
+
+	#print("plotting templates and periodograms")
+	#plot_templates_and_periodograms(x, y, err, y_temp, nharms = nh, freq_val=freq, ofac=ofac, hfac=hfac,
+	#	                                     settings=conf['templates_and_periodograms'])
+
+	#print("plotting accuracy (self)")
+	#plot_accuracy(x, y, err, y_temp, nharms, compare_with=tconf['nharm_answer'], 
+	#	                                     settings=conf['make_accuracy_plot'])
+
+	#print("plotting accuracy (non-linear)")
+	#plot_accuracy(x, y, err, y_temp, [ tconf['nharm_answer'] ], compare_with='slow_version', 
+	#	                                     settings=conf['make_accuracy_plot_with_slow_version'])
 
 	plt.show()

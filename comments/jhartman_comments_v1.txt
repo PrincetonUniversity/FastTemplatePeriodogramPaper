@@ -24,29 +24,29 @@ X 9. Equation 9, you should stress that for this analysis the "c_n" and "s_n" ar
 
 (X) 10. Equation 10, is it really necessary to provide this convergence requirement?  For the purposes of this algorithm, \hat{M} is the template, not M. Since you don't keep to this level of mathematical rigor later in the paper (e.g., equation 40), I think it may be better to avoid introducing this kind of formalism at the start and elevating the readers' expectations.
 
-11. Equations 11 and 12 use $i$ as the time subscript, but then starting at equation 14 (really 13) you switch to $n$ for this subscript. For clarity you should use the same subscript throughout.
+X 11. Equations 11 and 12 use $i$ as the time subscript, but then starting at equation 14 (really 13) you switch to $n$ for this subscript. For clarity you should use the same subscript throughout.
 
-12. Equation 14, middle equation, the $\hat{y}$ term should have an $n$ subscript.
+X 12. Equation 14, middle equation, the $\hat{y}$ term should have an $n$ subscript.
 
-13. following equation 14, "To hopefully make our derivations more intuitive" change to "To simply our derivations"
+X 13. following equation 14, "To hopefully make our derivations more intuitive" change to "To simply our derivations"
 
-14. following equation 18, "we denote shifted" add "the" after "denote"
+X 14. following equation 18, "we denote shifted" add "the" after "denote"
 
-15. equation 20, define $\bar{y}$ or use $\left< y \right>$ for consistency.
+X 15. equation 20, define $\bar{y}$ or use $\left< y \right>$ for consistency.
 
-16. After equation 23, "From this we obtain", you might say "Combining equations 23, 14 and 20, we obtain".  Also, aren't you assuming here $\theta_{1} != 0$?  What happens if you try to fit a set of data with zero variance? Is it important to mention this assumption?
+X 16. After equation 23, "From this we obtain", you might say "Combining equations 23, 14 and 20, we obtain".  Also, aren't you assuming here $\theta_{1} != 0$?  What happens if you try to fit a set of data with zero variance? Is it important to mention this assumption?
 
-17. After equation 30, "all of which can be evaluated efficiently with NFFTs."  perhaps say "all of which can be evaluated efficiently at all values of $\omega$ with NFFTs."  
+X 17. After equation 30, "all of which can be evaluated efficiently with NFFTs."  perhaps say "all of which can be evaluated efficiently at all values of $\omega$ with NFFTs."  
 
-18. equation 31, isn't the usual convention to list $M_{\theta_{2}}(x)$ on the left hand side of the top equation only, and then leave the left-hand-side empty for the next three lines?
+X 18. equation 31, isn't the usual convention to list $M_{\theta_{2}}(x)$ on the left hand side of the top equation only, and then leave the left-hand-side empty for the next three lines?
 
-19. equation 37, shouldn't this be Var(M_{\theta_2}) not Var(M_{\theta_2}^2)?
+X 19. equation 37, shouldn't this be Var(M_{\theta_2}) not Var(M_{\theta_2}^2)?
 
-20. You don't really need the $\pm$ in equation 40 since $q(u)$ is an undefined polynomial and can absorb the sign.
+X 20. You don't really need the $\pm$ in equation 40 since $q(u)$ is an undefined polynomial and can absorb the sign.
 
-21. The paragraph following equation 39, and including equations 40 and 41, is confusing, and I think too terse.  In equation 40 $p(u)$ and $q(u)$ will be different for each of the expressions on the left hand-side. Perhaps that is obvious, but you could just mention this fact for clarity.  Also, if I follow the derivation correctly, then equation 39 is really expressed as 0 = \hat{p}(u) + (1 - u^2)^{-1/2} \hat{q}(u), and you are multiplying both sides by ((1 - u^{2})^{1/2})((1 - u^{2})^{1/2}\hat{p}(u) - \hat{q}(u)) to get equation 41. That step is important, and should be listed explicitly, as it includes the assumption u^2 != 1 (meaning, I think, that you need to always check the possibility that either \theta_{2} = 0 or \theta_{2} = \pi is the optimal value). Also it means that many of the roots of $\hat{P}(u)$ (those that are roots of (1 - u^{2})^{1/2}\hat{p}(u) - \hat{q}(u))) may not actually be local chi^2 minima, so you are potentially over-complicating the problem.  A final question that I think should be addressed here is why you want to get an actual polynomial, as opposed to finding the roots of (0 = \hat{p}(u) + (1 - u^2){-1/2}\hat{q}(u))?  Are root-finding algorithms for polynomials significantly faster than root finding algorithms for other analytic expressions? If so, that fact should be mentioned.
+X 21. The paragraph following equation 39, and including equations 40 and 41, is confusing, and I think too terse.  In equation 40 $p(u)$ and $q(u)$ will be different for each of the expressions on the left hand-side. Perhaps that is obvious, but you could just mention this fact for clarity.  Also, if I follow the derivation correctly, then equation 39 is really expressed as 0 = \hat{p}(u) + (1 - u^2)^{-1/2} \hat{q}(u), and you are multiplying both sides by ((1 - u^{2})^{1/2})((1 - u^{2})^{1/2}\hat{p}(u) - \hat{q}(u)) to get equation 41. That step is important, and should be listed explicitly, as it includes the assumption u^2 != 1 (meaning, I think, that you need to always check the possibility that either \theta_{2} = 0 or \theta_{2} = \pi is the optimal value). Also it means that many of the roots of $\hat{P}(u)$ (those that are roots of (1 - u^{2})^{1/2}\hat{p}(u) - \hat{q}(u))) may not actually be local chi^2 minima, so you are potentially over-complicating the problem.  A final question that I think should be addressed here is why you want to get an actual polynomial, as opposed to finding the roots of (0 = \hat{p}(u) + (1 - u^2){-1/2}\hat{q}(u))?  Are root-finding algorithms for polynomials significantly faster than root finding algorithms for other analytic expressions? If so, that fact should be mentioned.
 
-22. After the above paragraph you need to finish connecting the dots for the reader to complete the method. Say that you solve for the roots of $\hat{P}$ and then say what you do with those roots to determine the global $\chi^2$ minimum. I assume you evaluate \chi^2 at each possibility, but is there some trick you are using to speed up that evaluation (e.g., do you express \chi^2 in terms of sums of cos and sin values that can also be evaluated efficiently with NFFTs at all omegas?)?  Finally, once you have the optimal values of $\theta_1$, $\theta_2$ and $\theta_3$, what expression are you evaluating to determine the periodogram? Is it the usual (\chi^2_{0} - \chi^2_model)/(\chi^{2}_{0})?
+X 22. After the above paragraph you need to finish connecting the dots for the reader to complete the method. Say that you solve for the roots of $\hat{P}$ and then say what you do with those roots to determine the global $\chi^2$ minimum. I assume you evaluate \chi^2 at each possibility, but is there some trick you are using to speed up that evaluation (e.g., do you express \chi^2 in terms of sums of cos and sin values that can also be evaluated efficiently with NFFTs at all omegas?)?  Finally, once you have the optimal values of $\theta_1$, $\theta_2$ and $\theta_3$, what expression are you evaluating to determine the periodogram? Is it the usual (\chi^2_{0} - \chi^2_model)/(\chi^{2}_{0})?
 
 23. Last paragraph of Section 2, "We have derived an explicit, non-linear system of equations to solve for ..."  Reference the equation numbers here explicitly to make it obvious to the reader trying to implement this how to do so.
 
