@@ -3,7 +3,7 @@
 VERSION_=`cat VERSION.txt`
 
 # increment
-VERSION=$((VERSION+1))
+VERSION=$((VERSION_+1))
 
 echo "Changing v${VERSION_} -> v${VERSION}"
 
@@ -18,4 +18,5 @@ mv paper_v${VERSION_}.tex old_versions/
 mv paper_v${VERSION_}.pdf old_versions/
 
 # soft-link paper.tex -> (new paper)
+rm paper.tex
 ln -s paper_v${VERSION}.tex paper.tex

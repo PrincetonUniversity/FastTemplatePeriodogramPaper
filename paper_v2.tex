@@ -47,9 +47,23 @@
 \newcommand{\pCStn}{\tilde{p}^{CS}}
 \newcommand{\pSSt}{p^{SS}}
 
+\newcommand{\ybar}{\bar{y}}
+\newcommand{\Mbk}[1][k]{\Mbar^{(#1)}}
+\newcommand{\Mt}{\mathbf{M}}
+\newcommand{\Mk}[1][k]{M^{(k)}}
+\newcommand{\Mtshft}{\Mt_{\theta_2}}
+\newcommand{\YMh}[1][k]{\YMhat^{(#1)}}
+\newcommand{\MMh}[1][k]{\MMhat^{(#1)}}
+\newcommand{\yb}[1][k]{\ybar^{(#1)}}
+\newcommand{\wk}[1][k]{w^{(#1)}}
+\newcommand{\yhk}[1][k]{\hat{y}^{(#1)}}
+\newcommand{\yk}[1][k]{y^{(#1)}}
+\newcommand{\Mtshftk}[1][k]{\Mtshft^{(#1)}}
+\newcommand{\Mtk}[1][k]{\Mt^{(#1)}}
+\newcommand{\lk}[1][k]{\lambda^{(#1)}}
+\newcommand{\Wtk}[1][k]{W^{(#1)}}
+
 \newcommand{\eith}{\psi}
-
-
 
 % read VERSION.txt for version
 \newcommand{\versionfilename}{VERSION.txt}
@@ -81,7 +95,6 @@ G. Bakos\altaffilmark{1}}
 \altaffiltext{2}{eScience Institute, University of Washington, Seattle, WA 98195}
 
 \begin{abstract}
-
     Astrophysical time series often contain periodic signals. The large and growing volume of time series data from 
     photometric surveys demands computationally efficient methods for detecting and characterizing such signals. 
     The most efficient algorithms available for this purpose are those that exploit the 
@@ -119,8 +132,8 @@ For stationary periodic signals, least-squares spectral analysis --- also known 
 the Lomb-Scargle (LS) periodogram \citep{Lomb_1976,Scargle_1982,Barning_1963,Vanicek_1971} ---
 is perhaps the most sensitive and computationally efficient method of detection. The LS periodogram
 can be made to scale as $\bigO(N_f\log N_f)$, where $N_f$ is the number of trial frequencies, by
-utilizing the non-equispaced fast Fourier transform \citep[NFFT;]{NFFT} to evaluate frequency-dependent
-sums, or by `extirpolating" irregularly spaced observations to a regular grid with Lagrange polynomials \citep{Press+Rybicki_1989}. 
+utilizing the non-equispaced fast Fourier transform \citep[][NFFT]{NFFT_KJD2009,NFFT_DR1993} to evaluate frequency-dependent
+sums, or by ``extirpolating" irregularly spaced observations to a regular grid with Lagrange polynomials \citep{Press+Rybicki_1989}. 
 
 The LS periodogram fits the following model to a set of observations:
 
@@ -131,13 +144,14 @@ The LS periodogram fits the following model to a set of observations:
 where $\omega = 2\pi / P$ is the (angular) frequency of the underlying signal, and $\theta_0$ and
 $\theta_1$ are the amplitudes of the signal. When the data $y_i$ is composed of a sinusoidal
 component and a white noise component (i.e., when the measurement uncertainties are uncorrelated and 
-Gaussian), the LS periodogram provides a maximum likelihood estimate for $\omega, \theta_0,$ and
-$\theta_1$.
+Gaussian), the LS periodogram provides a maximum likelihood estimate for the model parameters ($\omega, \theta_0,$ and
+$\theta_1$).
 
 The LS ``power'' $P_{LS}(\omega)$, analogous to the spectral power, has several definitions 
 in the literature \citep{Zechmeister+Kurster_2009}, but we adopt the following definition throughout the paper:
 
 \begin{equation}
+\label{eq:lsp}
 P(\omega) = \frac{\chi^2_0 - \chi^2(\omega)}{\chi^2_0}
 \end{equation}
 
@@ -148,7 +162,7 @@ Where $\chi^2_0$ is the weighted sum of squared residuals for a constant fit:
 \end{equation}
 
 where $\bar{y} = \sum_i w_i y_i$ is the weighted mean of the observations, and 
-$w_i \propto \sigma_i^{-2}$ are the normalized weights for each observations ($\sum_i w_i = 1$),
+$w_i \propto \sigma_i^{-2}$ are the normalized weights for each observation ($\sum_i w_i = 1$),
 and $\chi^2(\omega)$ is the weighted sum of squared residuals for the best-fit model $\hat{y}$ at
 a given trial frequency $\omega = 2\pi / P$ where $P$ is the period:
 
@@ -165,7 +179,7 @@ multi-band observations \citep{Vanderplas+Ivezic_2015}, and to mitigate overfitt
 flexible models via regularization \citep{Vanderplas+Ivezic_2015}. For a detailed review
 of the LS periodogram and its extensions, see \cite{Vanderplas_2017}.
 
-The multi-harmonic LS periodogram \citep[MHLS;]{Bretthorst_1988,Schwarzenberg-Czerny_1996,Palmer_2009}, provides a more
+The multi-harmonic LS periodogram \citep[][MHGLS]{Bretthorst_1988,Schwarzenberg-Czerny_1996,Palmer_2009}, provides a more
 flexible model by adding harmonic components to the fit:
 
 \begin{equation}
@@ -179,32 +193,16 @@ However, the MHLS periodogram contains $2H+1$ free parameters while the original
 contains only $2$ ($3$ if the mean brightness is considered a free parameter). Additional free parameters
 mean that MHLS is less sensitive to sinusoidal signals than the Lomb-Scargle periodogram.
 Tikhonov regularization (or $L_2$ regularization), which amounts to imposing a Gaussian prior on the harmonic amplitudes,
-provides may mitigate overfitting in the MHLS model \citep{Vanderplas+Ivezic_2015},
+may mitigate overfitting in the MHLS model \citep{Vanderplas+Ivezic_2015},
 but $L_2$ regularization introduces bias into the amplitude estimates if strong regularization is used, or, if
 weak regularization is used, may not be sufficient to overcome the loss of sensitivity from
 increasing the number of free parameters in the model.
 
-\subsection{Template periodograms}
-
-If the signal shape is known $\emph{a priori}$, then the number of free parameters needed for
-a model fit is the same as the original LS periodogram (with a floating mean component):
-
-\begin{equation}
-    \hat{y}(t|\theta, \omega) = \theta_0 + \theta_1 \mathbf{M}(\omega t - \theta_2),
-\end{equation}
-
-where $\mathbf{M}:[0, 2\pi)\rightarrow \mathcal{R}$ is a predefined periodic template. 
-We refer to the periodogram corresponding to this model as the ``template periodogram."
-
-As is the case for the LS periodogram, the template periodogram 
-is equivalent to a maximum-likelihood estimate of the model fit under the assumption that
-measurement uncertainties are gaussian and uncorrelated (i.e. white noise).
-
 \subsection{Computational scaling}
 
 The LS periodogram naively scales as $\bigO(N_f N_{\rm obs})$ where $N_f$ is the number of trial
-frequencies and $N_{\rm obs}$ is the number of observations. However, the computation
-of the LS periodogram involves sums of trigonometric functions over the observations. When
+frequencies and $N_{\rm obs}$ is the number of observations. However, the limiting computations
+of the LS periodogram involve sums of trigonometric functions over the observations. When
 the observations are regularly sampled, the fast Fourier transform (FFT)  \citep{Cooley+Tukey_1965} 
 can evaluate such sums efficiently and the LS periodogram scales as $\bigO(N_f\log N_f)$.
 
@@ -212,7 +210,7 @@ When the data is not regularly sampled, as is the case for most astronomical tim
 the LS periodogram can be evaluated quickly in one of two popular ways. 
 The first, by \cite{Press+Rybicki_1989} involves``extirpolating'' irregularly sampled 
 data onto a regularly sampled mesh, and then performing FFTs to evaluate the necessary sums.
-The second, as pointed out in \cite{Leroy_2012}, is to use the non-equispaced FFT (NFFT) \cite{NFFT} 
+The second, as pointed out in \cite{Leroy_2012}, is to use the non-equispaced FFT \citep[][NFFT]{NFFT_KJD2009,NFFT_DR1993} 
 to evaluate the sums; this provides roughly an order of magnitude speedup over the \cite{Press+Rybicki_1989}
 algorithm, and both algorithms scale as $\bigO(N_f\log N_f)$ \citep{Leroy_2012}.
 
@@ -234,11 +232,26 @@ $\bigO(10^6-10^7)$ stars. The Gaia telescope \citep{GAIA} is set to produce $\bi
 observations of $\bigO(10^9)$ stars. The Large Synoptic Survey Telescope (LSST; \cite{LSST}) 
 will make $\bigO(10^2-10^3)$ observations of $\bigO(10^{10})$ stars during its operation starting in 2023.
 
+
+\subsection{Template periodograms}
+
+When the shape of a stationary periodic signal is known $\emph{a priori}$, then the number of degrees of freedom is the same as the original LS periodogram (with a floating mean component):
+
+\begin{equation}
+    \hat{y}(t|\theta, \omega) = \theta_0 + \theta_1 \mathbf{M}(\omega t - \theta_2),
+\end{equation}
+
+where $\mathbf{M}:[0, 2\pi)\rightarrow \mathcal{R}$ is a predefined periodic template. 
+We refer to the periodogram corresponding to this model as the ``template periodogram."
+
+As is the case for the LS periodogram, the template periodogram 
+is equivalent to a maximum-likelihood estimate of the model parameters under the assumption that
+measurement uncertainties are Gaussian and uncorrelated (i.e. white noise).
+
 This paper develops new extensions of least-squares spectral analysis for arbitrary
 signal shapes. For non-periodic signals this method is known as matched filter analysis,
-and can be extended to search for periodic signals by phase folding the data
-at different trial periods. We refer to the latter technique, the subject of this paper, as
-template fitting. 
+and can be extended to search for periodic signals by, e.g., phase folding the data
+at different trial periods.
 
 Recently, \cite{Sesar_etal_2016} found that template fitting significantly improved
 period and amplitude estimation for RR Lyrae in Pan-STARRS DR1 \citep{PanSTARRS}. Since the signal
@@ -275,7 +288,7 @@ algorithm.
 We define a template $\mathbf{M}$
 
 \begin{equation}
-    \mathbf{M} : [0, 1)\rightarrow\mathbb{R},
+    \mathbf{M} : [0, 2\pi)\rightarrow\mathbb{R},
 \end{equation}
 
 \noindent as a mapping between the unit interval and the set of real numbers. We
@@ -283,17 +296,10 @@ restrict our discussion to sufficiently smooth templates such that
 $\mathbf{M}$ can be adequately described by a truncated Fourier series
 
 \begin{equation}
-    \hat{\mathbf{M}}(\omega t|H) = \sum_{n=1}^H\left[c_n\cos{n\omega t} + s_n\sin{n\omega t}\right]
+    \hat{\mathbf{M}}(\omega t|H) = \sum_{n=1}^H\left(c_n\cos{n\omega t} + s_n\sin{n\omega t}\right)
 \end{equation}
 
-\noindent for some $H > 0$. Formally, we require that for some relative error tolerance
-$\epsilon$ and for some maximum number of harmonics $H \lesssim 15$, 
-
-\begin{equation}
-\begin{split}
-   \forall t \in [0, 1):\, \lim_{H\rightarrow\infty} \left|\mathbf{M}(t) - \hat{\mathbf{M}}(t|H)\right| = 0
-\end{split}
-\end{equation}
+\noindent for some finite $H > 0$. 
 
 That the $c_n$ and $s_n$ values are \emph{fixed} (i.e., they define 
 the template) is the crucial difference between the template periodogram and
@@ -308,7 +314,7 @@ by a scaled, transposed template that repeats with period $2\pi / \omega$, i.e.
 y_i \approx \hat{y}(\omega t_i|\theta, \mathbf{M}) = \theta_1\mathbf{M}(\omega t_i - \theta_2) + \theta_3,
 \end{equation}
 
-\noindent where $\theta\in \mathbb{R}^3$ is a set of model parameters. 
+\noindent where $\theta = (\theta_1, \theta_2, \theta_3)\in \mathbb{R}^3$ is a set of model parameters. 
 
 The optimal parameters are the location of a local minimum of the (weighted) sum of 
 squared residuals,
@@ -334,7 +340,7 @@ Note that we also implicitly assume $\sigma_i > 0$ for all $i$ and we will later
 assume that the variance of the observations $y_i$ is non-zero. If there are no
 measurement errors, i.e. $\sigma_i = 0$ for all $i$, then uniform weights
 (setting $\sigma_i = 1$) should be used. If the variance of the observations $y$ 
-is zero, the periodogram is trivial and will be zero for all frequencies. We do not
+is zero, the periodogram (as defined in Equation \ref{eq:lsp}) is undefined for all frequencies. We do not
 consider the case where $\sigma_i = 0$ for some observations $i$ and $\sigma_j > 0$ for
 some observations $j$. In that case, the weighted least squares estimator is undefined.
 
@@ -494,7 +500,7 @@ YC_n &\equiv& \savg{(y - \bar{y})\cos{n\omega t}}\label{eq:YCdef}\\
 YS_n &\equiv& \savg{(y - \bar{y})\sin{n\omega t}}\label{eq:YSdef}.
 \end{eqnarray},
 
-all of which can be evaluated efficiently using non-equispaced fast Fourier transforms (NFFT).
+all of which can be evaluated efficiently using the NFFT.
 
 The autocovariance of the template values $MM$, is given by
 
@@ -509,9 +515,13 @@ MM &\equiv \sum_i w_i M_i^2 - \left(\sum_i w_i M_i\right)^2\\
    &\qquad + B_nB_mSS_{nm},
 \end{align}
 
-\noindent where we have used the fact that 
+\noindent using
 
-\noindent as well as their products
+\begin{equation}
+\sum_{n,m}A_nB_mCS_{nm} = \sum_{n,m} A_mB_n CS_{mn}.
+\end{equation}
+
+We also derive the products $A_nA_m$, $A_nB_m$, $B_nB_m$:
 
 
 \begin{align}
@@ -564,7 +574,7 @@ YM_{k} &= A_kYC_k + B_kYS_k\\
 \end{align}
 
 
-We also define $YM' = \eith^H YM$ and $MM' = \eith^{2H}MM$, both of which are polynomials. Their derivatives
+We also define $YM' = \eith^H YM$ and $MM' = \eith^{2H}MM$, both of which are polynomials in $\eith$. Their derivatives
 are
 
 \begin{align}
@@ -591,8 +601,7 @@ unit circle for all real $\theta_2$.
 
 We solve for the zeros of the polynomial condition defined by Equation \ref{eq:finalpoly}
 using the \texttt{numpy.polynomial.polyroots} function, which solves for the eigenvalues 
-of the polynomial companion matrix. Of resulting roots $r_i$ produced by the \texttt{numpy.polynomial.polyroots},
-only those that are close to the unit circle are kept (i.e. $|r_i - 1| < \delta$, with $\delta = 0.1$).
+of the polynomial companion matrix. 
 
 Solving for the zeros of a polynomial given a set of coefficients is unstable in certain cases, since the 
 coefficients are represented as floating point numbers with finite precision. Thus, we scale the roots
@@ -654,101 +663,13 @@ With Equation \ref{eq:multibandmultiphase}, the template periodogram is readily 
 time series, which is crucial for experiments like LSST, SDSS, Pan-STARRS, and other current 
 and future photometric surveys.
 
-\subsubsection{Shared-phase model}
-Extending the template periodogram to multi-band observations while fixing the
-relative phases of the templates requires additional derivation. A shared-phase
-model has $2K + 1$ free parameters, with an offset and amplitude for each filter 
-and a shared phase term.
-
-The $\chi^2$ corresponding to the shared-phase multiband model is
-
-\begin{equation}
-\label{eq:chi2sharedphase}
-\chi^2 = \sum_i^K\sum_j^{N_i} w_j^{(i)}(\yij - \hatyij)^2,
-\end{equation}
-
-\noindent where $\hatyij = \thta{1}\Mshftijsp + \thta{3}$ represents the model corresponding to a given
-filter $i$. The system of equations derived by setting $\partial_\theta \chi^2 = 0$ for each parameter $\theta$
-reduces to the familiar expressions for the amplitude and offset:
-
-\begin{eqnarray}
-\thta{1} &=& \frac{\savg{(\yij-\ybari)\Mshftijsp}}{\svar(\Mshftijsp)}\\
-\thta{3} &=& \ybari - \thta{1}\svar(\Mshftijsp),
-\end{eqnarray}
-
-as well as a non-linear relation that must be satisfied for the shared-phase
-parameter:
-\begin{widetext}
-\begin{align}
-\label{eq:condsharedphase}
-\sum_i^M\savg{(\yij-\ybari)\Mshftijsp}&\left(\prod_{k\ne i}\left(\svar\left(\Mshftkjsp\right)\right)^2\right)\\
-&\times \left(\savg{(\yij-\ybari)\partial\Mshftijsp}\svar\left(\Mshftijsp\right) - \savg{(\yij-\ybari)\Mshftijsp}\scov\left(\Mshftijsp,\partial\Mshftijsp\right)\right) = 0.
-\end{align}
-\end{widetext}
-
-
-\subsubsection{Other multi-band extensions}
-Other multi-band template periodograms are derivable; for instance, \cite{Sesar_etal_2016} used what amounted
-to a shared phase, amplitude, and offset model. Their model can be translated to
-
-\begin{equation}
-\hatyij = \theta_1\left(\underbrace{\alpha^{(i)}\Mshftijsp + \beta^{(i)}}_{\widetilde{M}_{\theta_2}^{(i)}}\right) + \theta_3
-\end{equation}
-
-where the $\alpha^{(i)}$ and $\beta^{(i)}$ parameters are fixed. This model has only 3 free parameters,
-which allowed \cite{Sesar_etal_2016} to achieve high signal-to-noise despite having less than
-10 epochs in each band. 
-
-In this case, the requirement that $\partial_{\theta_1}\chi^2 = 0$ gives
-
-\begin{align}
-0 &= \sum_i^K \savg{\yij\Mshfttld} - \theta_1\sum_i^K\savg{\left(\Mshfttld\right)^2}\\
-&\quad\quad - \theta_3\sum_i^K\savg{\Mshfttld}.
-\end{align}
-
-Requiring $\partial_{\theta_3}\chi^2 = 0$ gives another relation between
-the offset and amplitude parameters
-
-\begin{align}
-0 &= \sum_i^K\ybari - \theta_1\sum_i^K\savg{\Mshfttld} - K\theta_3\\
-\implies \theta_3 &= \bandavg{\ybari} - \theta_1\bandavg{\savg{\Mshfttld}}.
-\end{align}
-
-which implies that
-
-\begin{align}
-0 &= \sum_i^K \savg{\yij\Mshfttld} - \theta_1\sum_i^K\savg{\left(\Mshfttld\right)^2} \\
-  &\quad\quad - K\bandavg{\ybari}\bandavg{\savg{\Mshfttld}} + K\theta_1\bandavg{\savg{\Mshfttld}}^2\\
-  &= \bandavg{\savg{(\yij - \bandavg{\ybari})\Mshfttld}} - \theta_1\left(\bandavg{\savg{\left(\Mshfttld\right)^2}}\right. \\
-  &\quad\quad \left. - \bandavg{\savg{\Mshfttld}}^2\right)\\
-\theta_1 &= \frac{\bandavg{\savg{(\yij - \bandavg{\ybari})\Mshfttld}}}{\bandavg{\savg{\left(\Mshfttld\right)^2}} - \bandavg{\savg{\Mshfttld}}^2}
-\end{align}
-
-
-Where here, $\bandavg{\cdot}$ denotes a quantity averaged over all bandpasses.
-Combining these relations with the requirement that $\partial_{\theta_2}\chi^2 = 0$, i.e.
-
-\begin{align}
-0 &= \theta_1 \sum_i^M\savg{\yij\partial\Mshfttld} - \theta_1\savg{\Mshfttld\partial\Mshfttld} \\
-  &\quad\quad - \theta_3\savg{\partial\Mshfttld},
-\end{align}
-
-produces the condition that must be satisfied by the optimal phase parameter $\theta_2$,
-
-\begin{widetext}
-\begin{equation}
-\bandavg{\savg{(\yij - \bandavg{\ybari})\partial\Mshfttld}}\left(\bandavg{\savg{\left(\Mshfttld\right)^2}} - \bandavg{\savg{\Mshfttld}}^2\right)
-- \bandavg{\savg{(\yij - \bandavg{\ybari})\Mshfttld}}\left(\bandavg{\savg{\Mshfttld\partial\Mshfttld}} 
-- \bandavg{\savg{\Mshfttld}}\bandavg{\savg{\partial\Mshfttld}}\right).
-\end{equation}
-\end{widetext}
-
+Other multi-band extensions of the template periodogram are provided in Appendix \ref{sec:shphmult}.
 
 \subsection{Computational requirements}\label{sec:compreqs}
 
 For a given number of harmonics $H$, the task of deriving 
-the polynomial given in \ref{eq:finalpoly} requires $\bigO(H^2)$ computations,
-and finding roots requires $\bigO(H^3)$ computations. The degree of the final 
+the polynomial given in Equation \ref{eq:finalpoly} requires $\bigO(H^2)$ computations,
+and finding the roots of this polynomial requires $\bigO(H^3)$ computations. The degree of the final 
 polynomial is $6H - 1$. 
 
 When considering $N_f$ trial frequencies, the polynomial computation and root-finding 
@@ -777,17 +698,17 @@ the template algorithm scales as $\bigO(H^3)$, and computational resources
 alone limit $H$ to reasonably small numbers $H\lesssim15$ (see Figure \ref{fig:timingnharm}).
 
 
-\subsubsection{Computational considerations of multi-band extensions}
-Multi-band extensions generally require more computational
-time than the single band case. For the shared-phase multi-band periodogram,
-the scaling becomes $\bigO{KHN_f\log HN_f + K^3H^3N_f}$. The final expression given
-in Equation \ref{eq:condsharedphase} produces a root-finding polynomial that is of order
-$2H(5K - 1)$ for $K > 1$, compared with the order $\sim 6H$ polynomial obtained for
-the $K=1$ case.
+%\subsubsection{Computational considerations of multi-band extensions}
+%Multi-band extensions generally require more computational
+%time than the single band case. For the shared-phase multi-band periodogram,
+%the scaling becomes $\bigO{KHN_f\log HN_f + K^3H^3N_f}$. The final expression given
+%in Equation \ref{eq:condsharedphase} produces a root-finding polynomial that is of order
+%$2H(5K - 1)$ for $K > 1$, compared with the order $\sim 6H$ polynomial obtained for
+%the $K=1$ case.
 
-For the shared phase, amplitude, and offset case, however, the polynomial
-order remains the same as for the single band case, though the time needed to compute
-the polynomial coefficients increases by a factor of $K$. 
+%%For the shared phase, amplitude, and offset case, however, the polynomial
+%order remains the same as for the single band case, though the time needed to compute
+%the polynomial coefficients increases by a factor of $K$. 
 
 \section{Implementation}\label{sec:implementation}
 
@@ -807,8 +728,8 @@ An open-source implementation of the template periodogram in Python is
 available.\footnote{\url{https://github.com/PrincetonUniversity/FastTemplatePeriodogram}} 
 Polynomial algebra is performed using the \texttt{numpy.polynomial} module 
 \citep{Scipy}. The \texttt{nfft} Python module,
-\footnote{https://github.com/jakevdp/nfft} which provides a Python 
-implementation of the non-equispaced fast Fourier transform \citep{NFFT}, 
+\footnote{\url{https://github.com/jakevdp/nfft}} which provides a Python 
+implementation of the non-equispaced fast Fourier transform, 
 is used to compute the necessary sums for a particular time series.
 
 No explicit parallelism is used anywhere in the current implementation, 
@@ -821,9 +742,7 @@ Pro laptop (mid-2012 model) with 8GB of 1600 MHz DDR3 memory. The \texttt{Scipy}
 
 \subsection{Comparison with non-linear optimization}
 
-Within the Python implementation of the FTP, we have provided access to slower 
-methods that employ non-linear optimizationto compare the accuracy and speed 
-of the template periodogram described in this paper.
+In order to evaluate the accuracy and speed of the template periodogram, we have included slower alternative solvers within the Python implementation of the FTP that employ non-linear optimization.
 
 Periodograms computed in Figures \ref{fig:tempsandpdgs}, \ref{fig:corrwgats},
 and \ref{fig:corrwhighh} used simulated data. The simulated data has uniformly
@@ -891,7 +810,7 @@ periodogram for known, non-sinusoidal signal shapes.
 \end{figure*}
 
 FTP scales asymptotically as $\bigO(N_fH\log N_fH)$ with respect to the number of trial frequencies,
-$N_f$ and as $\bigO(N_fH^3t)$ with respect to the number of harmonics in which the template is expanded, $H$.
+$N_f$ and as $\bigO(N_fH^3)$ with respect to the number of harmonics in which the template is expanded, $H$.
 However, for reasonable cases ($N_f \lesssim 10^{120}$ when $H=5$) the computation time is dominated by
 computing polynomial coefficients and root finding, both of which scale linearly in $N_f$. 
 
@@ -960,13 +879,13 @@ a truncated Fourier series with a reasonably small number of harmonics
 ($H\lesssim 10$). 
 
 The fast template periodogram (FTP) asymptotically scales as 
-$\bigO(N_fH\log N_fH + N_fH^4)$, while previous template fitting algorithms
+$\bigO(N_fH\log N_fH + N_fH^3)$, while previous template fitting algorithms
 such as the one used in the \texttt{gatspy} library \citep{gatspy},
 scale as $\bigO(N_fN_{\rm obs})$. However, the FTP effectively
-scales as $\bigO(N_fH^4)$, since the time needed to compute polynomial
+scales as $\bigO(N_fH^3)$, since the time needed to compute polynomial
 coefficients and perform zero-finding dominates the computational time
 for all practical cases ($N_f \lesssim 10^{120}$).
-The $H^4$ scaling effectively restricts templates to those that are
+The $H^3$ scaling effectively restricts templates to those that are
 sufficiently smooth to be explained by a small number of Fourier terms.
 
 FTP also improves the accuracy of previous template fitting algorithms, 
@@ -1049,6 +968,94 @@ alternative techniques.
 %that could eventually make template fitting a fast and valuable tool.
 
 %Appendix: Proof that GLS is recovered when H=1
+
+\begin{appendix}
+
+\appendix\section{Shared-phase multi-band template periodogram}\label{sec:shphmult}
+
+We derive a multi-band extension for the template periodogram for data taken in $K$ filters, with $N_k$ observations in the $k$-th filter. We use the same model as the one described in \cite{Sesar_etal_2016} in order to illustrate the applicability of the template periodogram to more sophisticated scenarios.
+
+The $i$-th observation in the $k$-th filter is denoted $\yk_i$. We wish to fit a periodic, multi-band template $\Mt = (\Mtk[1], \Mtk[2], ..., \Mtk[K]): [0, 2\pi)\rightarrow \mathbb{R}^K$ to all observations. We assume the same model used by \cite{Sesar_etal_2016}, which assumes the relative amplitudes, phase shifts, and offsets are shared across bands:
+
+\begin{equation}
+\yhk(t|\theta) = \theta_1\Mtk(\omega t - \theta_2) + \theta_3 + \lk
+\end{equation}
+
+where $\lk$ is a fixed relative offset for band $k$. The $\chi^2$ for this model is
+
+\begin{equation}
+\chi^2 = \sum_{k=1}^{K}\sum_{i=1}^{N_k}\wk_i \left(\yk_i - \yhk_i\right)^2
+\end{equation}
+
+To make things simpler, we can set the $\lk$ values to 0 simply by subtracting them off from our observations; this means we take all $\yk_i \rightarrow \yk_i - \lk$. We have that
+
+\begin{equation}
+\chi^2 = \sum_{k=1}^K \Wtk\chi^2_k
+\end{equation}
+
+Where $\Wtk \equiv \sum_{i=1}^{N_k}\wk_i$ and $\sum_{k=1}^K\Wtk = 1$. This means that the system of equations reduces to:
+
+\begin{equation}
+0 = \frac{\partial\chi^2}{\partial\theta_1} = \sum_{k=1}^K \Wtk\left(\YMh - \theta_1\MMh - \theta_3\Mbk\right) 
+\end{equation}
+
+for the $\theta_1$ parameter, where $\YMh$, $\MMh$, $\Mbk$ are values from the single band case computed for each band individually, holding $\Wtk = 1$ for each band. That is:
+
+%\begin{equation}
+\begin{align}
+\YMh &\equiv \frac{1}{\Wtk}\sum_{i=1}^{N_k}\wk_i \yk_i \Mtshftk(\omega t_i)\\
+\MMh &\equiv \frac{1}{\Wtk}\sum_{i=1}^{N_k}\wk_i \left(\Mtshftk(\omega t_i)\right)^2\\
+\Mbk &\equiv \frac{1}{\Wtk}\sum_{i=1}^{N_k}\wk_i \Mtshftk(\omega t_i)
+\end{align}
+%\end{equation}
+
+For the offset $\theta_3$, we have
+
+\begin{equation}
+0 = \frac{\partial\chi^2}{\partial\theta_3} = \sum_{k=1}^K \Wtk\left(\yb - \theta_1\Mbk - \theta_3\right) 
+\end{equation}
+
+Where $\yb$ is the weighted-mean for the $k$-th band ($\yb \equiv (1/\Wtk)\sum_{i=1}^{N_k}\wk_i\yk_i$), again with $\yk_i \rightarrow \yk_i - \lk$.
+
+So if we redefine the quantities $\YMhat$, $\MMhat$, $\Mbar$, and $\bar{y}$ as weighted averages across the bands, i.e. $\YMhat = \sum_{k=1}^K \Wtk \YMh$, etc., the solution for the optimal parameters has the same form:
+
+%\begin{equation}
+\begin{align}
+\theta_1 &= \left(\frac{YM}{MM}\right)\\
+\theta_3 &= \bar{y} - \Mbar\left(\frac{YM}{MM}\right)
+\end{align}
+%\end{equation}
+
+which means that the model for the $k$-th band is
+
+\begin{equation}
+\yhk = \bar{y} + \left(\frac{YM}{MM}\right)\left(M^{(k)}_i - \Mbar\right)
+\end{equation}
+
+The form of the periodogram has the same form as the single-band case:
+
+%\begin{equation}
+\begin{align}
+\chi^2 &=\sum_{k=1}^{K}\sum_{i=1}^{N_k}\wk_i \left(\yk_i - \yhk_i\right)^2\\
+       &=\sum_{k=1}^{K}\sum_{i=1}^{N_k}\wk_i \left((\yk_i - \bar{y}) - \left(\frac{YM}{MM}\right)(M_i^{(k)} - \Mbar)\right)^2\\
+       &=\sum_{k=1}^{K}\sum_{i=1}^{N_k}\wk_i \left((\yk_i - \bar{y})^2 - 2\left(\frac{YM}{MM}\right)(M_i^{(k)} - \Mbar)(\yk_i - \bar{y}) + \left(\frac{YM}{MM}\right)^2(M_i^{(k)} - \Mbar)^2\right)^2\\
+       &=YY - 2\frac{(YM)^2}{MM} + \frac{(YM)^2}{MM}\\
+       &=YY - \frac{(YM)^2}{MM}.
+\end{align}
+%\end{equation}
+
+Since there is a single shared offset between the bands (i.e. we assume the mean magnitude is the same in all bands after subtracting $\lk$), the variance for the signal, $YY$, is not $\sum_{k=1}^{K}\sum_{i=1}^{N_k}\wk_i (\yk_i - \yb)^2$ but $\sum_{k=1}^{K}\sum_{i=1}^{N_k}\wk_i (\yk_i - \bar{y})^2$.
+
+Construction of the polynomial for the multi-band case can be performed by first computing the polynomial expression for $\eith^{2H}\MMhat = \sum_{k=1}^{K}\sum_{i=1}^{N_k}\wk_i \left(\eith^{H}\Mk_i\right)^2$ and a separate polynomial expression for $\psi^H\Mbar$, which can then be squared and subtracted from $\psi^{2H}\MMhat$ to find $MM' = \eith^{2H}MM$.
+
+For $YM' = \eith^H YM$, we merely compute $\eith^H\YMhat^{(k)}$ for each band, take the weighted average of the polynomial coefficients for all bands ($\eith^H\YMhat = \sum_k^K \Wtk \eith^H\YMhat^{(k)}$) and subtract the $\eith^H\bar{y}\Mbar$ polynomial to get $YM'$. 
+
+After computing the polynomials $MM'$ and $YM'$, the polynomial in Equation \ref{eq:finalpoly} can be computed quickly and the following steps for finding the optimal model parameters is the same as in the single band case.
+
+The computational complexity of this model scales as $\bigO(KN_fH\log N_fH + N_fH^3)$ where $K$ is the number of filters. Since the polynomial zero-finding step is the limiting computation in most real-world applications, the multi-band template periodogram corresponding to the \cite{Sesar_etal_2016} model should not be significantly more computationally intensive than the single-band case. 
+
+\end{appendix}
+
 \begin{acknowledgements}
 \todo{(acknowledge GRANTS.)}
 \end{acknowledgements}
