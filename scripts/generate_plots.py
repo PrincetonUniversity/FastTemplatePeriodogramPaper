@@ -202,10 +202,10 @@ def get_timing_vs_nharmonics(x, y, yerr, hvals, filename=None, overwrite=True,
 		if h in results:
 			continue
 
-		print "   H = ", h
+		print("   H = ", h)
 
 		template = get_default_template(nharmonics=h)
-		template.precompute()
+		#template.precompute()
 		
 		model = FastTemplatePeriodogram(template=template)
 		model.fit(x, y, yerr)
@@ -214,7 +214,7 @@ def get_timing_vs_nharmonics(x, y, yerr, hvals, filename=None, overwrite=True,
 		model.autopower()
 		results[h] = time() - t0
 
-		print "   %.4f seconds"%(results[h])
+		print("   %.4f seconds"%(results[h]))
 		if not filename is None and overwrite:
 			pickle.dump(results, open(filename, 'wb'))
 
@@ -258,7 +258,7 @@ def get_timing_vs_ndata(nvals, nharmonics, filename=None, overwrite=True,
 						time_gatspy=True, only_use_saved_data=False, time_lomb_scargle=False):
 	#if template is None:
 	template = get_default_template(nharmonics=nharmonics)
-	template.precompute()
+	#template.precompute()
 
 	# load saved results
 	results = {}
@@ -668,7 +668,7 @@ def plot_timing_vs_nharmonics(settings=default_settings):
 
 			arrowprops = dict(ec=ax.get_facecolor(), fc=settings['font_color'], 
 				              lw=1.5, arrowstyle='simple')
-			print settings['bbox']
+			print(settings['bbox'])
 			ax.annotate(title, xy=coord0, xycoords='data', xytext=tuple(settings['xyoffset']), 
 						textcoords='offset points',
 						horizontalalignment=settings['xtext_ha'], verticalalignment='bottom', 
@@ -1232,10 +1232,8 @@ if __name__ == '__main__':
 	#print("plotting timing vs ndata at constant freq")
 	#plot_timing_vs_ndata_const_freq(settings=conf['timing_vs_ndata_const_freq'])
 
-	#print("plotting timing vs nharmonics")
-	#plot_timing_vs_nharmonics(conf['timing_vs_nharmonics'])
-	#plt.show()
-	#sys.exit()
+	print("plotting timing vs nharmonics")
+	plot_timing_vs_nharmonics(conf['timing_vs_nharmonics'])
 
 	#print("plotting timing vs ndata")
 	#plot_timing_vs_ndata(conf['timing_vs_ndata'])
@@ -1243,9 +1241,9 @@ if __name__ == '__main__':
 	#print("plotting nobs dt for surveys")
 	#plot_nobs_dt_for_surveys(settings=conf['nobs_dt_for_surveys'])
 
-	#print("plotting templates and periodograms")
-	#plot_templates_and_periodograms(x, y, err, y_temp, nharms = nh, freq_val=freq, ofac=ofac, hfac=hfac,
-	#	                                     settings=conf['templates_and_periodograms'])
+	print("plotting templates and periodograms")
+	plot_templates_and_periodograms(x, y, err, y_temp, nharms = nh, freq_val=freq, ofac=ofac, hfac=hfac,
+		                                     settings=conf['templates_and_periodograms'])
 
 	#print("plotting accuracy (self)")
 	#plot_accuracy(x, y, err, y_temp, nharms, compare_with=tconf['nharm_answer'], 

@@ -40,7 +40,14 @@
 \newcommand{\CSt}{\widetilde{CS}}
 \newcommand{\SSt}{\widetilde{SS}}
 
+\newcommand{\pYCt}{p^{YC}}
+\newcommand{\pYSt}{p^{YC^*}}
+\newcommand{\pCCt}{p^{CC}}
+\newcommand{\pCSt}{p^{CS}}
+\newcommand{\pCStn}{\tilde{p}^{CS}}
+\newcommand{\pSSt}{p^{SS}}
 
+\newcommand{\eith}{\psi}
 
 
 
@@ -75,7 +82,7 @@ G. Bakos\altaffilmark{1}}
 
 \begin{abstract}
 
-    Astrophysical time series often contain periodic signals. The sheer volume of time series data from 
+    Astrophysical time series often contain periodic signals. The large and growing volume of time series data from 
     photometric surveys demands computationally efficient methods for detecting and characterizing such signals. 
     The most efficient algorithms available for this purpose are those that exploit the 
     $\bigO(N\log N)$ scaling of the Fast Fourier Transform (FFT). However, these methods are not optimal 
@@ -84,110 +91,139 @@ G. Bakos\altaffilmark{1}}
     implementations of template periodograms scale as $\bigO(N_f N_{\rm obs})$, where $N_f$ is the number 
     of trial frequencies and $N_{\rm obs}$ is the number of lightcurve observations, and they do not 
     gaurantee the best fit at each trial frequency. In this work, we present a non-linear extension of the Lomb-Scargle 
-    periodogram which provides a template-fitting algorithm that is both accurate (the exact optimal solutions are
+    periodogram to obtain a template-fitting algorithm that is both accurate (optimal solutions are
     obtained except in rare cases) and computationally efficient (scaling as $\bigO(N_f\log N_f)$). 
     The non-linear optimization of the template fit at each frequency is recast as a polynomial 
     zero-finding problem, where the coefficients of the polynomial can be computed efficiently with
-    FFTs. We show that our method, which uses truncated Fourier series to approximate templates, 
-    is twice as fast as existing algorithms for small problems ($N\lesssim 10$ observations) and
-    1-2 orders of magnitude faster for long base-line time series with $\bigO(10^4)$ observations.
+    the non-equispaced fast Fourier transform. We show that our method, which uses truncated Fourier series to approximate templates, 
+    is an order of magnitude faster than existing algorithms for small problems ($N\lesssim 10$ observations) and
+    2 orders of magnitude faster for long base-line time series with $\bigO(10^4)$ observations.
     An open-source implementation of the fast template periodogram is available at 
     \href{https://www.github.com/PrincetonUniversity/FastTemplatePeriodogram}{github.com/PrincetonUniversity/FastTemplatePeriodogram}. 
 \end{abstract}
 
 \section{Introduction}\label{sec:introduction}
 
-Astrophysical time series are challenging to analyze. Unlike
-time series in other domains such as economics and finance, astrophysical 
-observations are often irregularly sampled in time with heteroskedastic, 
-non-Gaussian, and time-correlated measurement uncertainties.
+Astronomical systems exhibit a wide range of time-dependent variability. By measuring and
+characterizing this variability, astronomers are able to infer a variety of important
+astrophysical properties about the underlying system. 
 
-Irregular sampling thwarts the straightforward application of many well-known 
-time series tools like the discrete Fourier transform (DFT) and the auto-regressive 
-moving average (ARMA) models. The DFT is a particularly unfortunate loss, since
-the Fast Fourier Transform \citep{Cooley+Tukey_1965} reduces the $\bigO(N^2)$ DFT
-to $\bigO(N\log N)$, and is a powerful tool for finding periodic signals.
+Periodic signals in noisy astronomical timeseries can be detected with a number of techniques,
+including Gaussian process regression \citep{Foreman-Mackey_etal_2017,Rasmussen+Williams_2006},
+least-squares spectral analysis \citep{Lomb_1976,Scargle_1982,Barning_1963,Vanicek_1971}, and
+information-theoretic methods \citep{Graham_etal_2013b,Huijse_etal_2012,Cincotta_etal_1995}. For an empirical
+comparison of some of these techniques applied to several astronomical survey datasets, see
+\cite{Graham_etal_2013}.
 
-The DFT can be extended to irregularly sampled data via what is sometimes
-referred to as the classical periodogram \citep{Stoica+Li+He_2009}
+For stationary periodic signals, least-squares spectral analysis --- also known as
+the Lomb-Scargle (LS) periodogram \citep{Lomb_1976,Scargle_1982,Barning_1963,Vanicek_1971} ---
+is perhaps the most sensitive and computationally efficient method of detection. The LS periodogram
+can be made to scale as $\bigO(N_f\log N_f)$, where $N_f$ is the number of trial frequencies, by
+utilizing the non-equispaced fast Fourier transform \citep[NFFT;]{NFFT} to evaluate frequency-dependent
+sums, or by `extirpolating" irregularly spaced observations to a regular grid with Lagrange polynomials \citep{Press+Rybicki_1989}. 
 
-\begin{equation}
-    P_x(\omega) = \frac{1}{N^2}\left|\sum_{n=0}^{N - 1} y_n e^{- i \omega t_n}\right|^2.
-\end{equation}
-
-However, as \cite{Stoica+Li+He_2009} point out, this is not an
-optimal measure of periodicity. A more robust estimate of the power spectrum is
-given by the Lomb-Scargle periodogram \citep{Lomb_1976,Scargle_1982,Barning_1963,Vanicek_1971}.
-
-ARMA models can also be extended to unevenly sampled data with the CARMA
-model \citep{Kelly_etal_2014, Zinn_etal_2016}, but for the purposes of this paper, 
-we focus solely on tools applicable to the detection of periodic signals in astrophysical data. 
-
-The Lomb-Scargle periodogram and its extensions can be expressed in terms of 
-least-squares minimization between the data $\{y_n\}_{n=1}^N$ and a model $\hat{y}$.
-In the original formulation of the Lomb-Scargle periodogram, 
+The LS periodogram fits the following model to a set of observations:
 
 \begin{equation}
     \hat{y}_{\rm LS}(t|\theta, \omega) = \theta_0\cos{\omega t} + \theta_1\sin{\omega t}.
 \end{equation}
 
-This is equivalent to performing a DFT if the data is regularly sampled. The Lomb-Scargle
-periodogram can be obtained from solving the linear system of equations that arise from
-the condition that the summed squares of residuals between the data and the optimal
-model,
+where $\omega = 2\pi / P$ is the (angular) frequency of the underlying signal, and $\theta_0$ and
+$\theta_1$ are the amplitudes of the signal. When the data $y_i$ is composed of a sinusoidal
+component and a white noise component (i.e., when the measurement uncertainties are uncorrelated and 
+Gaussian), the LS periodogram provides a maximum likelihood estimate for $\omega, \theta_0,$ and
+$\theta_1$.
+
+The LS ``power'' $P_{LS}(\omega)$, analogous to the spectral power, has several definitions 
+in the literature \citep{Zechmeister+Kurster_2009}, but we adopt the following definition throughout the paper:
 
 \begin{equation}
-\chi^2(\theta, S) \equiv \sum_i (y_i - \hat{y}(t_i|\theta) )^2,
+P(\omega) = \frac{\chi^2_0 - \chi^2(\omega)}{\chi^2_0}
 \end{equation}
 
-\noindent must be a local minimum. This means that
+Where $\chi^2_0$ is the weighted sum of squared residuals for a constant fit:
 
 \begin{equation}
-    \left.\frac{\partial\chi^2}{\partial\theta_i}\right|_{\theta=\theta_{\rm best}} = 0~~\forall\theta_i\in\theta.
+\chi^2_0 = \sum_i w_i (y_i - \bar{y})^2
 \end{equation}
 
-The resulting periodogram can be expressed as
+where $\bar{y} = \sum_i w_i y_i$ is the weighted mean of the observations, and 
+$w_i \propto \sigma_i^{-2}$ are the normalized weights for each observations ($\sum_i w_i = 1$),
+and $\chi^2(\omega)$ is the weighted sum of squared residuals for the best-fit model $\hat{y}$ at
+a given trial frequency $\omega = 2\pi / P$ where $P$ is the period:
 
 \begin{equation}
-\begin{split}
-    P_{\rm LS} = \frac{1}{2\sigma^2}&\left(\frac{\left[\sum_{n=1}^N (y_n - \bar{y})\cos{\omega t_n}\right]^2}{\sum_{n=1}^N \cos^2{\omega t_i}} \right. \\
-                &\left.+ \frac{\left[\sum_{n=1}^N (y_n - \bar{y})\sin{\omega t_n}\right]^2}{\sum_{n=1}^N \sin^2{\omega t_i}} \right),
-\end{split}
+\chi^2(\omega) = \min_{\theta} \sum_i w_i (y_i - \hat{y}(\omega t_i | \theta))^2
 \end{equation}
 
-\noindent where $\bar{y} = \mathbb{E}[y_n]$, the mean of the data, and 
-$\sigma = {\rm Var}(y_n)$, the variance of the data. 
 
-Heteroskedasticity can be handled by using weighted least squares, 
+\subsection{Extending Lomb-Scargle}
+
+The LS periodogram has numerous extensions to account for, e.g., biased estimates of the mean brightness
+\citep{Zechmeister+Kurster_2009}, non-sinusoidal signals \citep{Schwarzenberg-Czerny_1996,Palmer_2009},
+multi-band observations \citep{Vanderplas+Ivezic_2015}, and to mitigate overfitting of more
+flexible models via regularization \citep{Vanderplas+Ivezic_2015}. For a detailed review
+of the LS periodogram and its extensions, see \cite{Vanderplas_2017}.
+
+The multi-harmonic LS periodogram \citep[MHLS;]{Bretthorst_1988,Schwarzenberg-Czerny_1996,Palmer_2009}, provides a more
+flexible model by adding harmonic components to the fit:
 
 \begin{equation}
-\chi^2(\theta, S) \equiv \sum_i \frac{(y_i - \hat{y}(t_i|\theta) )^2}{\sigma_i^2},
+    \hat{y}_{\rm MHLS}(t|\theta, \omega) = \theta_0 + \sum_{n=1}^H \theta_{2n}\cos{n\omega t} + \theta_{2n-1}\sin{n\omega t}.
 \end{equation}
 
-\noindent with weights $w_i = \frac{W}{\sigma_i^2}$, $W\equiv\sum \sigma_i^{-2}$ being
-a normalization factor to ensure $\sum w_i = 1$, and correlated uncertainties
-can be accounted for by using the full covariance matrix, $\Sigma_{ij} = {\rm Cov}\left((y_i - \bar{y})(y_j - \bar{y})\right)$.
+Additional harmonics are important for modeling signals that, while stationary and periodic,
+are non-sinusoidal (e.g. RR Lyrae, eclipsing binaries, etc.).
+
+However, the MHLS periodogram contains $2H+1$ free parameters while the original LS periodogram
+contains only $2$ ($3$ if the mean brightness is considered a free parameter). Additional free parameters
+mean that MHLS is less sensitive to sinusoidal signals than the Lomb-Scargle periodogram.
+Tikhonov regularization (or $L_2$ regularization), which amounts to imposing a Gaussian prior on the harmonic amplitudes,
+provides may mitigate overfitting in the MHLS model \citep{Vanderplas+Ivezic_2015},
+but $L_2$ regularization introduces bias into the amplitude estimates if strong regularization is used, or, if
+weak regularization is used, may not be sufficient to overcome the loss of sensitivity from
+increasing the number of free parameters in the model.
+
+\subsection{Template periodograms}
+
+If the signal shape is known $\emph{a priori}$, then the number of free parameters needed for
+a model fit is the same as the original LS periodogram (with a floating mean component):
 
 \begin{equation}
-\chi^2(\theta, S) \equiv (y_i - \hat{y}(t_i|\theta) )^{\rm T}\Sigma^{-1}(y_i - \hat{y}(t_i|\theta) ).
+    \hat{y}(t|\theta, \omega) = \theta_0 + \theta_1 \mathbf{M}(\omega t - \theta_2),
 \end{equation}
 
-If we assume the covariance matrix is diagonal, the Lomb-Scargle periodogram can be
-evaluated quickly in one of two popular ways. The first, by \cite{Press+Rybicki_1989}
-involves``extirpolating'' irregularly sampled data onto a regularly sampled mesh,
-and then performing FFTs to evaluate the necessary sums. The second, as pointed
-out in \cite{Leroy_2012}, is to use the non-equispaced FFT (NFFT) \cite{NFFT} to evaluate
-the sums; this provides an order of magnitude speedup over the \cite{Press+Rybicki_1989}
-algorithm, and both algorithms scale as $\bigO(N_f\log N_f)$.
+where $\mathbf{M}:[0, 2\pi)\rightarrow \mathcal{R}$ is a predefined periodic template. 
+We refer to the periodogram corresponding to this model as the ``template periodogram."
+
+As is the case for the LS periodogram, the template periodogram 
+is equivalent to a maximum-likelihood estimate of the model fit under the assumption that
+measurement uncertainties are gaussian and uncorrelated (i.e. white noise).
+
+\subsection{Computational scaling}
+
+The LS periodogram naively scales as $\bigO(N_f N_{\rm obs})$ where $N_f$ is the number of trial
+frequencies and $N_{\rm obs}$ is the number of observations. However, the computation
+of the LS periodogram involves sums of trigonometric functions over the observations. When
+the observations are regularly sampled, the fast Fourier transform (FFT)  \citep{Cooley+Tukey_1965} 
+can evaluate such sums efficiently and the LS periodogram scales as $\bigO(N_f\log N_f)$.
+
+When the data is not regularly sampled, as is the case for most astronomical time series,
+the LS periodogram can be evaluated quickly in one of two popular ways. 
+The first, by \cite{Press+Rybicki_1989} involves``extirpolating'' irregularly sampled 
+data onto a regularly sampled mesh, and then performing FFTs to evaluate the necessary sums.
+The second, as pointed out in \cite{Leroy_2012}, is to use the non-equispaced FFT (NFFT) \cite{NFFT} 
+to evaluate the sums; this provides roughly an order of magnitude speedup over the \cite{Press+Rybicki_1989}
+algorithm, and both algorithms scale as $\bigO(N_f\log N_f)$ \citep{Leroy_2012}.
 
 There is a growing population of alternative methods for detecting
 periodic signals in astrophysical data. Some of these methods can reliably
-outperform the Lomb-Scargle periodogram, especially for non-sinusoidal signal shapes
+outperform the LS periodogram, especially for non-sinusoidal signal shapes
 (see \cite{Graham_etal_2013} for a recent empirical review of period finding algorithms). 
 However, a key advantage the LS periodogram and its extensions is speed.
-Virtually all other methods scale as $N_{\rm obs}\times N_f$, where $N_{\rm obs}$ is the number
+Virtually all other ``phase-folding" methods scale as $\bigO(N_{\rm obs}\times N_f)$, where $N_{\rm obs}$ is the number
 of observations and $N_f$ is the number of trial frequencies, while the Lomb-Scargle
-periodogram scales as $N_f\log N_f$. The virtual independence of Lomb-Scargle on the number
+periodogram scales as $\bigO(N_f\log N_f)$. The virtual independence of Lomb-Scargle on the number
 of observations (assuming $N_f \gtrsim N_{\rm obs}$) is especially attractive for lightcurves
 with $N_{\rm obs} \gg \log N_f \sim 50$. 
 
@@ -198,7 +234,7 @@ $\bigO(10^6-10^7)$ stars. The Gaia telescope \citep{GAIA} is set to produce $\bi
 observations of $\bigO(10^9)$ stars. The Large Synoptic Survey Telescope (LSST; \cite{LSST}) 
 will make $\bigO(10^2-10^3)$ observations of $\bigO(10^{10})$ stars during its operation starting in 2023.
 
-This paper develops new extensions to least-squares spectral analysis for arbitrary
+This paper develops new extensions of least-squares spectral analysis for arbitrary
 signal shapes. For non-periodic signals this method is known as matched filter analysis,
 and can be extended to search for periodic signals by phase folding the data
 at different trial periods. We refer to the latter technique, the subject of this paper, as
@@ -234,22 +270,6 @@ addresses caveats, and discusses possible avenues for improving the efficiency o
 algorithm.
 
 
-%Many astrophysical systems exhibit brightness fluctuations, and
-%detecting these brightness fluctuations in data has been a challenge for astronomers for \todo{what was the
-%earliest detection of variability?}. 
-
-%Some of these variable systems, such as eclipsing binaries, transiting
-%exoplanets, or pulsating stars, exhibit periodic brightness fluctuations. Powerful methods
-%for detecting periodicities in observational data have been developed and deployed
-
-%A plethora of astronomical systems exhibit periodic fluctuations
-%in brightness. These systems are important for many reasons; pulsating
-%stars are valuable laboratories for testing our understanding
-%of stellar physics \todo{cite pulsating stars}, determining
-%stellar composition \todo{cite astroseismology}, and as distance
-%indicators \todo{cite distance indicators}. Transiting exoplanets
-%are valuable 
-
 \section{Derivations}\label{sec:derivations}
 
 We define a template $\mathbf{M}$
@@ -266,17 +286,18 @@ $\mathbf{M}$ can be adequately described by a truncated Fourier series
     \hat{\mathbf{M}}(\omega t|H) = \sum_{n=1}^H\left[c_n\cos{n\omega t} + s_n\sin{n\omega t}\right]
 \end{equation}
 
-\noindent for some $H > 0$. Specifically, we require that 
+\noindent for some $H > 0$. Formally, we require that for some relative error tolerance
+$\epsilon$ and for some maximum number of harmonics $H \lesssim 15$, 
 
 \begin{equation}
 \begin{split}
-   \forall t \in (0, 1]:\, \lim_{H\rightarrow\infty} \left|\mathbf{M}(t) - \hat{\mathbf{M}}(t|H)\right| = 0
+   \forall t \in [0, 1):\, \lim_{H\rightarrow\infty} \left|\mathbf{M}(t) - \hat{\mathbf{M}}(t|H)\right| = 0
 \end{split}
 \end{equation}
 
 That the $c_n$ and $s_n$ values are \emph{fixed} (i.e., they define 
 the template) is the crucial difference between the template periodogram and
-the Multiharmonic Lomb Scargle (or FastChi) \citep{Palmer_2009}, where $c_n$ and $s_n$ 
+the multi-harmonic Lomb-Scargle \citep{Palmer_2009,Bretthorst_1988}, where $c_n$ and $s_n$ 
 are \emph{free parameters}.
 
 We now construct a periodogram for this template. The periodogram assumes 
@@ -307,8 +328,7 @@ Note that we have implicitly assumed $\chi^2(\theta,S)$ is a $C^1$ differentiabl
 function of $\theta$, which requires that $\mathbf{M}$ is a
 $C^1$ differentiable function. Though this assumption could be violated if we 
 considered a more complete set of templates, (e.g. a box function), our restriction 
-to truncated Fourier series ensures that $\mathbf{M}$ is
- $C^1$ differentiable and thus that $\chi^2(\theta,S)$ is $C^1$ differentiable.
+to truncated Fourier series ensures $C^1$ differentiability.
 
 Note that we also implicitly assume $\sigma_i > 0$ for all $i$ and we will later
 assume that the variance of the observations $y_i$ is non-zero. If there are no
@@ -352,187 +372,235 @@ To simplify derivations, we adopt the following notation:
 \svar(X) &\equiv& \scov(X, X)
 \end{eqnarray}
 
-In addition, we denote the shifted template $\mathbf{M}(x - \theta_2)$ by $\Mshft(x)$.
+In addition, the transposed template $\Mshft = \mathbf{M}(\omega t_i - \theta_2)$ can be expressed
+as
 
-For the amplitude and offset model parameters ($\theta_1$ and $\theta_3$, respectively), 
-we obtain the following relations from Equation \ref{eq:simpconds}
+\begin{align}
+\Mshft(\omega t) &= \sum_n c_n\cos n\left(\omega t - \theta_2 \right) \\
+                &\qquad + s_n\sin{n\left(\omega t - \theta_2 \right)}\\
+                &= \sum_n\left(c_n\cos{n\theta_2}-s_n\sin{n \theta_2}\right)\cos{n\omega t} + \\
+                &\qquad \left(s_n\cos{n\theta_2} + c_n\sin{n \theta_2}\right)\sin{n\omega t} \\
+                &= \sum_n\left(\alpha_n e^{in\theta_2} + \alpha_n^{*} e^{-in\theta_2}\right)\cos{n\omega t} + \\
+                &\qquad \left(-i\left[\alpha_n e^{in\theta_2} - \alpha_n^{*} e^{-in\theta_2}\right]\right)\sin{n\omega t} \\
+                &= \sum_n\left(\alpha_n \eith^n + \alpha_n^{*} \eith^{-n}\right)\cos{n\omega t} + \\
+                &\qquad \left(-i\left[\alpha_n \eith^n - \alpha_n^{*} \eith^{-n}\right]\right)\sin{n\omega t} \\
+                &= \sum_nA_n(\eith)\cos{n\omega t} + B_n(\eith)\sin{n\omega t}
+\end{align}
 
-\begin{eqnarray}
-    \savg{y\Mshft(\omega t)} &=& \theta_1\savg{\Mshft^2(\omega t)} + \theta_3\savg{\Mshft(\omega t)}\\
-    \label{eq:th3cond}
-    \theta_3 &=& \bar{y} - \theta_1\savg{\Mshft(\omega t)},
-\end{eqnarray}
+where $\alpha_n = (c_n + is_n)/2$, and $\eith\equiv e^{i\theta_2}$ is a convenient change of variable.
 
-\noindent where $\bar{y}\equiv \savg{y}$. Combining these expressions yields
+We also define the following terms:
 
-\begin{equation}\label{eq:th13eq}
-\theta_1 = \frac{\savg{(y - \bar{y})\Mshft(\omega t)}}{\svar(\Mshft(\omega t))}.
-\end{equation}
+\begin{align}
+\YMhat &= \savg{y\Mshft}\\
+\MMhat &= \savg{\Mshft^2}\\
+\Mbar &= \savg{\Mshft}\\
+MM &= \svar(\Mshft) = \MMhat - \Mbar^2\\
+YM &= \scov(\Mshft, y) = \YMhat - \bar{y}\Mbar 
+\end{align}
 
-For the offset parameter $\theta_2$, 
+For a given phase shift $\theta_2$, the optimal amplitude and
+offset are obtained from requiring the partial derivatives of the
+sum of squared residuals, $\chi^2$, to be zero.
+
+Namely, we obtain that
+\begin{align}
+0 = \frac{\partial\chi^2}{\partial\theta_1} &= 2\sum_iw_i(y_i - \hat{y}_i)\left(-\frac{\partial\hat{y}}{\partial\theta_1}\right)_i\\
+    &= \sum_iw_i(y_i - \theta_1\Mshft - \theta_3)\Mshft\\
+    &= \YMhat - \theta_1 \MMhat - \theta_3 \Mbar
+\end{align}
+
+and
+\begin{align}
+0 = \frac{\partial\chi^2}{\partial\theta_3} &= 2\sum_iw_i(y_i - \hat{y}_i)\left(-\frac{\partial\hat{y}}{\partial\theta_3}\right)_i\\
+    &= \sum_iw_i(y_i - \theta_1\Mshft - \theta_3)\\
+    &= \bar{y} - \theta_1 \Mbar - \theta_3
+\end{align}
+
+This system of equations can then be rewritten as
 
 \begin{equation}
-\label{eq:mshftdef1}
- \begin{split}
-     \frac{\partial\hat{y}}{\partial\theta_2} &= \theta_1\frac{\dMshft}{\partial\theta_2}\\
-     &= -\theta_1\dMshft,
- \end{split}
+\begin{pmatrix} \MMhat & \Mbar \\ \Mbar & 1 \end{pmatrix}
+\begin{pmatrix} \theta_1 \\ \theta_3 \end{pmatrix}
+= 
+\begin{pmatrix} \YMhat \\ \bar{y}\end{pmatrix}
 \end{equation}
 
-\noindent where 
+which reduces to 
+
+\begin{align}
+\begin{pmatrix} \theta_1 \\ \theta_3 \end{pmatrix}
+&= 
+\frac{1}{\MMhat - \Mbar^2}
+\begin{pmatrix} 1 & -\Mbar \\ -\Mbar & \MMhat \end{pmatrix}
+\begin{pmatrix} \YMhat \\ \bar{y}\end{pmatrix}\\
+&= 
+\frac{1}{\MMhat - \Mbar^2}
+\begin{pmatrix} \YMhat - \bar{y}\Mbar \\ \MMhat\bar{y} - \YMhat\Mbar \end{pmatrix}
+\end{align}
+
+Letting $MM = \MMhat - \Mbar^2$ and $YM = \YMhat - \bar{y}\Mbar$, we have
+\begin{equation}
+\begin{pmatrix} \theta_1 \\ \theta_3 \end{pmatrix}
+= 
+\begin{pmatrix} YM / MM \\ \bar{y} - \Mbar (YM / MM)\end{pmatrix}
+\end{equation}
+
+This means we can rewrite the model $\hat{y} = \theta_1\Mshft + \theta_3$ as 
 
 \begin{equation}
- \dMshft(x) = \sum_n \left[s_n\cos{n(x - \theta_2)} - c_n\sin{n(x - \theta_2)}\right].
-\end{equation}
- 
-From Equations \ref{eq:simpconds}, \ref{eq:th3cond}, and \ref{eq:mshftdef1} we obtain
-
-\begin{equation}\label{eq:th2eq}
- \theta_1 = \frac{\savg{(y - \bar{y})\dMshft(\omega t)}}{\scov\left(\Mshft(\omega t),\dMshft(\omega t)\right)},
+\hat{y}_i = \bar{y} + \left(\frac{YM}{MM}\right)(M_i - \Mbar)
 \end{equation}
 
-\noindent which, combined with Equation \ref{eq:th13eq}, provides 
-a non-linear condition for $\theta_2$:
+To obtain an expression for the periodogram, $P = 1 - \chi^2 / \chi^2_0$, we first compute $\chi^2$
 
-\begin{equation}\label{eq:th2cond}
-\begin{split}
-&\savg{(y - \bar{y})\dMshft(\omega t)}\svar(\Mshft(\omega t)) \\
- &= \savg{(y - \bar{y})\Mshft(\omega t)}\scov(\Mshft(\omega t),\dMshft(\omega t)).
-\end{split}
+\begin{align}
+\chi^2 &= \sum_i w_i (y_i - \hat{y}_i)^2 \\
+       &= \sum_i w_i (y_i^2 - 2y_i\hat{y}_i + \hat{y}_i^2)\\
+       %&= \sum_i w_i ((y_i - \bar{y})^2 + 2y_i(\bar{y} - \bar{y} - \left(\frac{YM}{MM}\right)(M_i - \Mbar)) - \bar{y}^2 + \bar{y}^2 \\
+       %&\qquad + 2\bar{y}\left(\frac{YM}{MM}\right)(M_i - \Mbar) + \left(\frac{YM}{MM}\right)^2(M_i^2 - 2M_i\Mbar + \Mbar^2)\\
+       &= YY - 2\frac{(YM)^2}{MM} + \frac{(YM)^2}{MM}\\
+       &= YY - \frac{(YM)^2}{MM}
+\end{align}
+
+Since, $\chi^2_0 = YY$, we have
+
+\begin{equation}
+P(\omega) = \frac{(YM)^2}{YY\cdot MM}
 \end{equation}
 
-To obtain an explicit expression for Equation \ref{eq:th2cond},
-we define several quantities, 
+We wish to maximize $P(\omega)$ with respect to the phase shift parameter $\theta_2$,
+
+\begin{align}
+\label{eq:theta2cond}
+\partial_{\theta_2}P = 0 &= \frac{YM}{YY\cdot MM}\left(2\partial_{\theta_2}(YM) - \frac{YM}{MM}\partial_{\theta_2}(MM)\right)\\
+                         &= 2MM\partial_{\theta_2}(YM) - YM\partial_{\theta_2}(MM).
+\end{align}
+
+The final expression is the non-linear condition that must be satisfied by the optimal
+phase shift parameter $\theta_2$. However, satisfying Equation \ref{eq:theta2cond}
+is not \emph{sufficient} to gaurantee that $\theta_2$ is optimal. The value of the
+periodogram at each $\theta_2$ satisfying Equation \ref{eq:theta2cond} must be computed,
+and the globally optimal solution chosen from this set.
+
+We seek a more explicit form for Equation \ref{eq:theta2cond}. We
+derive expressions for $MM$ and $YM$, defining
 
 \begin{eqnarray}
 CC_{nm} &\equiv& \scov(\cos{n\omega t},\cos{m\omega t})\label{eq:CCdef}\\
 CS_{nm} &\equiv& \scov(\cos{n\omega t},\sin{m\omega t})\label{eq:CSdef}\\
 SS_{nm} &\equiv& \scov(\sin{n\omega t},\sin{m\omega t})\label{eq:SSdef}\\
 YC_n &\equiv& \savg{(y - \bar{y})\cos{n\omega t}}\label{eq:YCdef}\\
-YS_n &\equiv& \savg{(y - \bar{y})\sin{n\omega t}}\label{eq:YSdef},
-\end{eqnarray}
+YS_n &\equiv& \savg{(y - \bar{y})\sin{n\omega t}}\label{eq:YSdef}.
+\end{eqnarray},
 
-\noindent all of which can be evaluated quickly for every trial frequency 
-$\omega$ with the use of NFFTs. We also obtain
-an expression for the shifted template:
+all of which can be evaluated efficiently using non-equispaced fast Fourier transforms (NFFT).
 
-\begin{equation}
-\begin{split}
-    \Mshft(x) &= \sum_n \left[c_n\cos{n(x - \theta_2)} + s_n\sin{n(x - \theta_2)}\right]\\
-    %\Mshft(x) &= \sum_n \left[c_n\left(\cos{nx}\cos{n\theta_2} + \sin{nx}\sin{n\theta_2}\right)\right. \\
-    %        &\qquad\quad\left. + s_n\left(\sin{nx}\cos{n\theta_2} - \cos{nx}\sin{n\theta_2}\right)\right]\\
-              &= \sum_n \left[\left(c_n\cos{n\theta_2} - s_n\sin{n\theta_2}\right)\cos{nx} \right.\\
-              &\qquad\quad \left. + \left(s_n\cos{n\theta_2} + c_n\sin{n\theta_2}\right)\sin{nx}\right]\\
-              &= \sum_n \left[\left(c_nT_n(u) \mp s_n\sqrt{1 - u^2}U_{n-1}(u)\right)\cos{nx} \right.\\
-              &\qquad\quad \left. + \left(s_nT_n(u) \pm c_n\sqrt{1 - u^2}U_{n-1}(u)\right)\sin{nx}\right]\\
-              &= \sum_n \left[A_n(u)\cos{nx} + B_n(u)\sin{nx}\right]
-\end{split}
-\end{equation}
-
-\noindent where $u \equiv \cos \theta_2$, $T_n$ and $U_n$ are the Chebyshev polynomials 
-of the first and second kind, respectively, and the $\pm$ ambiguity arises out of the
-two possible signs for $\sin{\theta_2}$.
-
-The derivatives of first and second order Chebyshev polynomials are known to be
-
-\begin{eqnarray}
-\frac{dT_n}{dx} &=& nU_{n-1}(x)\\
-\frac{dU_n}{dx} &=& \frac{(n+1)T_{n+1}(x) - xU_n(x)}{x^2 - 1},
-\end{eqnarray}
-
-\noindent and this implies that the first derivative of the shifted template is
-
-\begin{equation}
-\begin{split}
-\dMshft(x) &= \sum_n \left[n\left(c_nU_{n-1}(u) \pm s_n\frac{T_n(u)}{\sqrt{1 - u^2}}\right)\cos{nx} \right.\\
-           &\qquad\quad \left. + n\left(s_nU_{n-1}(u) \mp c_n\frac{T_n(u)}{\sqrt{1 - u^2}}\right)\sin{nx}\right]\\
-\dMshft(x) &= \sum_n \left[\dA_n(u) \cos{nx} + \dB_n(u) \sin{nx}\right]
-\end{split}
-\end{equation}
-
-Using the sums provided in Equations \ref{eq:CCdef} -- \ref{eq:YSdef}, writing 
-$A_n$ and $B_n$ as as shorthand for $A_n(u)$ and $B_n(u)$, and employing 
-Einstein summation notation, we have that
+The autocovariance of the template values $MM$, is given by
 
 \begin{align}
-\savg{(y - \bar{y})\Mshft} &= A_n YC^n + B_n YS^n\\
-\savg{(y - \bar{y})\dMshft} &= \dA_n YC^n + \dB_n YS^n\\
-\svar(\Mshft) &= 
-\begin{aligned}[t]
-&A_nA_m CC^{nm} \\
-& + 2A_nB_m CS^{nm}
-+ B_nB_m SS^{nm}
-\end{aligned}\\
-\scov(\Mshft, \dMshft) &=
-\begin{aligned}[t]
-&A_n \dA_m CC^{nm}\\
-&+ (A_n\dB_m + B_n \dA_m)CS^{nm} \\
-&+ B_n\dB_m SS^{nm}
-\end{aligned}.
+MM &\equiv \sum_i w_i M_i^2 - \left(\sum_i w_i M_i\right)^2\\
+   &= \sum_i w_i \left(\sum_nA_n\cos{\omega n t_i} + B_n\sin{\omega n t_i}\right)^2\\
+   &\qquad - \left(\sum_nA_nC_n + B_nS_n\right)^2\\
+   &= \sum_{n,m} A_nA_mCC_{nm} \nonumber \\
+   &\qquad + (A_nB_mCS_{nm} + B_nA_m(CS^T)_{nm}) \nonumber \\
+   &\qquad + B_nB_mSS_{nm}\\
+   &= \sum_{n,m} A_nA_mCC_{nm} + 2A_nB_mCS_{nm} \nonumber\\
+   &\qquad + B_nB_mSS_{nm},
 \end{align}
 
-Equation \ref{eq:th2cond} now becomes
+\noindent where we have used the fact that 
 
-%\begin{widetext}
-\begin{align}\label{eq:polynomial}
-0 &= 
-\begin{aligned}[t]
-&\quad A_nA_m\dA_k\left(YC^nCC^{mk} -  YC^kCC^{mn}\right)\\
-&+ A_nA_m\dB_k\left(YC^nCS^{mk} - YS^kCC^{mn}\right)\\
-&+ A_nB_m\dA_k\left(YC^nCS^{km} + YS^mCC^{kn}\right)\\
-&+ A_nB_m\dB_k\left(YC^nSS^{mk} + YS^mCS^{nk}\right)\\
-&+ B_nB_m\dA_k\left(YS^nCS^{km} - YC^kSS^{nm}\right)\\
-&+ B_nB_m\dB_k\left(YS^nSS^{mk} - YS^kSS^{mn}\right).
-\end{aligned}
+\noindent as well as their products
+
+
+\begin{align}
+\begin{split}
+A_nA_m &= \left(\alpha_n\eith^n + \alpha^{*}_n\eith^{-n}\right)\left(\alpha_m\eith^m + \alpha^{*}_m\eith^{-m}\right)\\
+       &= \alpha_n\alpha_m \eith^{n+m} + \alpha^{*}_n\alpha_m\eith^{m-n} \\
+       &\qquad + \alpha_n\alpha^{*}_m \eith^{n-m} + \alpha^{*}_n\alpha^{*}_m\eith^{-n-m)}
+\end{split}\\
+\begin{split}
+A_nB_m &= -i\left(\alpha_n\eith^n + \alpha^{*}_n\eith^{-n}\right)\left(\alpha_m\eith^m - \alpha^{*}_m\eith^{-m}\right)\\
+       &= -i\left\{\alpha_n\alpha_m \eith^{n+m} + \alpha^{*}_n\alpha_m\eith^{m-n} \right.\\
+       &\qquad \left. - \alpha_n\alpha^{*}_m \eith^{n-m} - \alpha^{*}_n\alpha^{*}_m\eith^{-n-m)}\right\}
+\end{split}\\
+\begin{split}
+B_nB_m &= -\left(\alpha_n\eith^n - \alpha^{*}_n\eith^{-n}\right)\left(\alpha_m\eith^m - \alpha^{*}_m\eith^{-m}\right)\\
+       &= -\left\{\alpha_n\alpha_m \eith^{n+m} - \alpha^{*}_n\alpha_m\eith^{m-n} \right.\\
+       &\qquad \left.- \alpha_n\alpha^{*}_m \eith^{n-m} + \alpha^{*}_n\alpha^{*}_m\eith^{-n-m}\right\}
+\end{split}
 \end{align}
-%\end{widetext}
 
-Each $AA\dA$, $AA\dB$, ..., $BB\dB$ can be expressed as 
 
-\begin{equation}
-AA\dA,~AA\dB,~...= p(u) + (1 - u^2)^{-1/2}q(u),
-\end{equation}
+Now we have that
 
-\noindent where both $p(u)$ and $q(u)$ are polynomials in $u$. Therefore, Equation
-\ref{eq:polynomial} can be expressed in the same form, and if we assume $|u| < 1$,
-a polynomial condition can be obtained
+\begin{align}
+\begin{split}
+MM_{nm} &= A_nA_mCC_{nm} + 2A_nB_mCS_{nm} + B_nB_mSS_{nm}\\
+        &= \alpha_n\alpha_m\CCt_{nm}\eith^{n+m} + 2\alpha_n\alpha^{*}_m\CSt_{nm}\eith^{n-m} \\
+        &\qquad + \alpha^{*}_n\alpha^{*}_m\SSt_{nm}\eith^{-(n+m)}
+\end{split}
+\end{align}
 
-\begin{equation}\label{eq:polycond}
-0 = (1 - u^2)\hat{p}^2(u) - \hat{q}^2(u) = \hat{P}(u)\quad |u| < 1
-\end{equation}
+where
 
-\noindent for some polynomials $\hat{p}, \hat{q}$, and $\hat{P}$.
+\begin{align}
+\CCt_{nm}  &= (CC_{nm} - SS_{nm}) - i\left(CS + CS^T\right)_{nm} \\
+\CSt_{nm}  &= (CC_{nm} + SS_{nm}) + i\left(CS - CS^T\right)_{nm}\\
+\SSt_{nm}  &= (CC_{nm} - SS_{nm}) + i\left(CS + CS^T\right)_{nm} 
+\end{align}
 
-Here and in the implementation presented in Section \ref{sec:implementation}, we
-do not attempt to obtain an explicit form for the polynomials $\hat{p},\,\,\hat{q},\,\,\hat{P},\,\,...$.
-We compute these polynomials as needed with polynomial algebra and the relation given 
-in Equation \ref{eq:polynomial}, and precompute the polynomials $AA\dA,\,\,AA\dB,\,\,...$ 
-for each template, since they do not depend on the data. 
+and for $YM$:
 
-We solve for the zeros of the polynomial condition defined by Equation \ref{eq:polycond}
+\begin{align}
+\begin{split}
+YM_{k} &= A_kYC_k + B_kYS_k\\
+        &= \alpha_kYC_k\eith^k + \alpha_k^{*}YC_k\eith^{-k} \\
+        &\qquad - i\left(\alpha_kYS_k\eith^k - \alpha^{*}_kYS_k\eith^{-k}\right)\\
+        &= (YC_k - iYS_k)\alpha_k\eith^k + (YC_k + iYS_k)\alpha^{*}_k\eith^{-k}\\
+        &= \alpha_k\YCt_k \eith^k + \alpha^{*}_k\YCt_k^{*} \eith^{-k}.
+\end{split}
+\end{align}
+
+
+We also define $YM' = \eith^H YM$ and $MM' = \eith^{2H}MM$, both of which are polynomials. Their derivatives
+are
+
+\begin{align}
+\partial YM' &= H\eith^{H-1} YM + \eith^H \partial YM\\
+\partial MM' &= 2H\eith^{2H-1} MM + \eith^{2H}\partial MM.
+\end{align}
+
+A new polynomial condition can then be expressed in terms of $MM'$, $YM'$ and their derivatives.
+
+\begin{align}\label{eq:finalpoly}
+0 &= 2MM\partial(YM) - YM\partial(MM)\\
+  &= \eith^{3H+1}\left(2MM\partial(YM) - YM\partial(MM)\right)\\
+  &= 2\eith^{2H}MM\left(\eith^{H+1}\partial(YM)\right) \nonumber \\
+  &\qquad - \eith^HYM\left(\eith^{2H+1}\partial(MM)\right)\\
+  &= 2MM'\left(\eith\partial(YM') - H(YM')\right) \nonumber \\
+  &\qquad - YM'\left(\eith\partial(MM') - 2H(MM')\right)\\
+  &= \eith\left(2MM'\partial(YM') - YM'\partial(MM')\right) \nonumber \\
+  &\qquad- 2H\left(MM'YM' - YM'MM'\right)\\
+  &= 2MM'\partial(YM') - YM'\partial(MM')
+\end{align}
+
+The last step assumes that $\eith\ne 0$, which is a valid assumption since $\eith=e^{i\theta_2}$ lies on the
+unit circle for all real $\theta_2$.
+
+We solve for the zeros of the polynomial condition defined by Equation \ref{eq:finalpoly}
 using the \texttt{numpy.polynomial.polyroots} function, which solves for the eigenvalues 
-of the polynomial companion matrix. We also test the special cases where $u=1$, 
-i.e. $\theta_2 \in \{ 0, \pi \}$. 
+of the polynomial companion matrix. Of resulting roots $r_i$ produced by the \texttt{numpy.polynomial.polyroots},
+only those that are close to the unit circle are kept (i.e. $|r_i - 1| < \delta$, with $\delta = 0.1$).
 
-The set of real roots of $\hat{P}$, $R\in \mathcal{R}$, provides a set of $\theta_2$ parameters,
-one of which is the optimal value. We evaluate the periodogram at each $\theta_2 \in R\cup\{-1,1\}$
-to find the optimal value of $\theta_2$.
+Solving for the zeros of a polynomial given a set of coefficients is unstable in certain cases, since the 
+coefficients are represented as floating point numbers with finite precision. Thus, we scale the roots
+by their modulus to ensure they lie on the unit circle. Alternatively, we could use iterative schemes
+such as Newton's method to improve the estimate of the roots more robustly, however this requires more computational power and 
+the accuracy of the roots was not a problem for any of the test cases we performed.
 
 %%%%%%%%%%%%%%%%%%%%%%% TODO: FINISH
-
-An explicit form of the polynomial given in Equation \ref{eq:polynomial} may provide some
-shortcuts that could further improve computational efficiency. As discussed in Section
-\ref{sec:compreqs} and \ref{sec:implementation}, deriving the polynomial $\hat{P}$ and finding
-its real roots is the limiting computational step for the FTP. The efficiency of the root finding step
-is aided by the fact that $\hat{P}$ is a polynomial, and thus the roots can be approximated 
-by the eigenvalues of the polynomial companion matrix, or by a variety of other methods \todo{cite rootfinding
-methods}, which in many cases are faster and more accurate than general non-linear root finding methods
-\todo{this should be backed up more.}
-
-We have derived an explicit, non-linear system of equations to solve for
-the parameters $\theta_1$, $\theta_2$, and $\theta_3$. Solving this system of equations
-requires finding the zeros of a polynomial $\hat{P}(u)$ at the given trial frequency.
-
 
 \subsection{Negative amplitude solutions}
 The model $\hat{y}= \theta_1\Mshft + \theta_0$ allows for $\theta_1 < 0$ solutions. 
@@ -679,33 +747,17 @@ produces the condition that must be satisfied by the optimal phase parameter $\t
 \subsection{Computational requirements}\label{sec:compreqs}
 
 For a given number of harmonics $H$, the task of deriving 
-$\hat{P}$ requires a triple sum over $H$ terms, with each sum
-requiring $\bigO(n_{\hat{P}})$ operations, where $n_{\hat{P}}$ is the order
-of $\hat{P}$. The order of $\hat{P}$ can be shown to be
-
-\begin{equation}
-6H - {\rm deg}\left({\rm gcf}\left((1 - u^2)\star\hat{p}^2, \hat{q}^2\right)\right) \propto H,
-\end{equation}
-
-\noindent where ${\rm gcf}(p_1, p_2)$ denotes the greatest common polynomial factor
-between polynomials $p_1$ and $p_2$, and ${\rm deg}(p)$ denotes the degree of polynomial $p$. 
-Computing the coefficients of $\hat{P}$ therefore scales as $\bigO(H^4)$ at each trial frequency. 
-
-The computational complexity of polynomial root finding
-is algorithm dependent. If we choose to perform singular value decomposition of
-the polynomial companion matrix\footnote{The \texttt{numpy.polynomial.polyroots} 
-function uses this method.}, the root finding step scales as 
-$\bigO(n_{\hat{P}}^3) = \bigO(H^3)$. The polynomial root-finding step 
-should be asymptotically faster (for large $H$) than the computation of 
-the polynomial coefficients.
+the polynomial given in \ref{eq:finalpoly} requires $\bigO(H^2)$ computations,
+and finding roots requires $\bigO(H^3)$ computations. The degree of the final 
+polynomial is $6H - 1$. 
 
 When considering $N_f$ trial frequencies, the polynomial computation and root-finding 
-step scales as $\bigO(H^4N_f)$. The computation of the sums 
+step scales as $\bigO(H^3N_f)$. The computation of the sums 
 (Equations \ref{eq:CCdef} -- \ref{eq:YSdef}) scales as $\bigO(HN_f\log HN_f)$.
 Therefore, the entire template periodogram scales as 
 
 \begin{equation}
-\bigO(HN_f \log HN_f + H^4N_f).
+\bigO(HN_f \log HN_f + H^3N_f).
 \end{equation}
 
 \begin{figure}
@@ -716,19 +768,19 @@ Therefore, the entire template periodogram scales as
             sublinearly in $H$ (possibly due to a constant overhead per
             trial frequency, independent of $H$). When $3 \lesssim H \lesssim 11$,
             FTP scales approximately linearly in $H$, and when $H \gtrsim 11$
-            FTP approaches the $\bigO(H^4)$ scaling limit.}
+            FTP approaches the $\bigO(H^3)$ scaling limit.}
 \end{figure}
 
 For a fixed number of harmonics $H$, the template periodogram scales as
 $\bigO(N_f\log N_f)$. However, for a constant number of trial frequencies $N_f$, 
-the template algorithm scales as $\bigO(H^4)$, and computational resources
+the template algorithm scales as $\bigO(H^3)$, and computational resources
 alone limit $H$ to reasonably small numbers $H\lesssim15$ (see Figure \ref{fig:timingnharm}).
 
 
 \subsubsection{Computational considerations of multi-band extensions}
 Multi-band extensions generally require more computational
 time than the single band case. For the shared-phase multi-band periodogram,
-the scaling becomes $\bigO{KHN_f\log HN_f + K^4H^4N_f}$. The final expression given
+the scaling becomes $\bigO{KHN_f\log HN_f + K^3H^3N_f}$. The final expression given
 in Equation \ref{eq:condsharedphase} produces a root-finding polynomial that is of order
 $2H(5K - 1)$ for $K > 1$, compared with the order $\sim 6H$ polynomial obtained for
 the $K=1$ case.
@@ -753,7 +805,7 @@ the polynomial coefficients increases by a factor of $K$.
 
 An open-source implementation of the template periodogram in Python is
 available.\footnote{\url{https://github.com/PrincetonUniversity/FastTemplatePeriodogram}} 
-Computing $\hat{P}(u)$ is done using the \texttt{numpy.polynomial} module 
+Polynomial algebra is performed using the \texttt{numpy.polynomial} module 
 \citep{Scipy}. The \texttt{nfft} Python module,
 \footnote{https://github.com/jakevdp/nfft} which provides a Python 
 implementation of the non-equispaced fast Fourier transform \citep{NFFT}, 
@@ -766,9 +818,6 @@ via calls to BLAS libraries that have OpenMP enabled.
 All timing tests were run on a quad-core 2.6 GHz Intel Core i7 MacBook 
 Pro laptop (mid-2012 model) with 8GB of 1600 MHz DDR3 memory. The \texttt{Scipy} stack 
 (version 0.18.1) was compiled with multi-threaded MKL libraries.
-However, the slowest portion of the algorithm, computing the polynomial
-coefficients, uses the \texttt{numpy.einsum} function which is not
-multi-threaded. 
 
 \subsection{Comparison with non-linear optimization}
 
@@ -836,13 +885,13 @@ periodogram for known, non-sinusoidal signal shapes.
              case when $N_f = ~12 N_{\rm obs}$, i.e. the cadence of the observations is constant. 
              \emph{Right}: timing for the case when $N_f$ is fixed, i.e. the baseline of the observations
              are constant. Non-linear optimization techniques scale as $\bigO(N_f N_{\rm obs})$ while 
-             the FTP scales as $\bigO(HN_f\log HN_f + N_fH^4)$, where $H$ is the number of harmonics
+             the FTP scales as $\bigO(HN_f\log HN_f + N_fH^3)$, where $H$ is the number of harmonics
              needed to approximate the template.}
     
 \end{figure*}
 
 FTP scales asymptotically as $\bigO(N_fH\log N_fH)$ with respect to the number of trial frequencies,
-$N_f$ and as $\bigO(N_fH^4)$ with respect to the number of harmonics in which the template is expanded, $H$.
+$N_f$ and as $\bigO(N_fH^3t)$ with respect to the number of harmonics in which the template is expanded, $H$.
 However, for reasonable cases ($N_f \lesssim 10^{120}$ when $H=5$) the computation time is dominated by
 computing polynomial coefficients and root finding, both of which scale linearly in $N_f$. 
 
@@ -1003,205 +1052,7 @@ alternative techniques.
 \begin{acknowledgements}
 \todo{(acknowledge GRANTS.)}
 \end{acknowledgements}
-\begin{appendix}
-\section{Explicit expression of polynomial condition}
 
-We introduce the following definitions:
-
-\begin{align}
-\YMhat &= \savg{y\Mshft}\\
-\MMhat &= \savg{\Mshft^2}\\
-\Mbar &= \savg{\Mshft}\\
-MM &= \MMhat - \Mbar^2\\
-YM &= \YMhat - \bar{y}\Mbar
-\end{align}
-
-For a given phase shift $\theta_2$, the optimal amplitude and
-offset are obtained from requiring the partial derivatives of the
-sum of squared residuals, $\chi^2$, to be zero.
-
-Namely, we obtain that
-\begin{align}
-0 = \frac{\partial\chi^2}{\partial\theta_1} &= 2\sum_iw_i(y_i - \hat{y}_i)\left(-\frac{\partial\hat{y}}{\partial\theta_1}\right)_i\\
-    &= \sum_iw_i(y_i - \theta_1\Mshft - \theta_3)\Mshft\\
-    &= YM - \theta_1 \MMhat - \theta_3 \Mbar
-\end{align}
-
-and
-\begin{align}
-0 = \frac{\partial\chi^2}{\partial\theta_3} &= 2\sum_iw_i(y_i - \hat{y}_i)\left(-\frac{\partial\hat{y}}{\partial\theta_3}\right)_i\\
-    &= \sum_iw_i(y_i - \theta_1\Mshft - \theta_3)\\
-    &= \bar{y} - \theta_1 \Mbar - \theta_3
-\end{align}
-
-This system of equations can then be rewritten as
-
-\begin{equation}
-\begin{pmatrix} \MMhat & \Mbar \\ \Mbar & 1 \end{pmatrix}
-\begin{pmatrix} \theta_1 \\ \theta_2 \end{pmatrix}
-= 
-\begin{pmatrix} \YMhat \\ \bar{y}\end{pmatrix}
-\end{equation}
-
-which reduces to 
-
-\begin{equation}
-\begin{pmatrix} \theta_1 \\ \theta_2 \end{pmatrix}
-= 
-\frac{1}{\MMhat - \Mbar^2}
-\begin{pmatrix} 1 & -\Mbar \\ -\Mbar & \MMhat \end{pmatrix}
-\begin{pmatrix} \YMhat \\ \bar{y}\end{pmatrix}
-= 
-\frac{1}{\MMhat - \Mbar^2}
-\begin{pmatrix} \YMhat - \bar{y}\Mbar \\ \MMhat\bar{y} - \YMhat\Mbar \end{pmatrix}
-\end{equation}
-
-Letting $MM = \MMhat - \Mbar^2$ and $YM = \YMhat - \bar{y}\Mbar$, we have
-\begin{equation}
-\begin{pmatrix} \theta_1 \\ \theta_2 \end{pmatrix}
-= 
-\begin{pmatrix} YM / MM \\ 1 - \Mbar (YM / MM)\end{pmatrix}
-\end{equation}
-
-This means we can rewrite the model $\hat{y} = \theta_1\Mshft + \theta_3$ as 
-
-\begin{equation}
-\hat{y}_i = \bar{y} + \left(\frac{YM}{MM}\right)(M_i - \Mbar)
-\end{equation}
-
-To obtain an expression for the periodogram, $P = 1 - \chi^2 / \chi^2_0$, we first compute $\chi^2$
-
-\begin{align}
-\chi^2 &= \sum_i w_i (y_i - \hat{y}_i)^2 \\
-       &= \sum_i w_i (y_i^2 - 2y_i\hat{y}_i + \hat{y}_i^2)\\
-       &= \sum_i w_i ((y_i - \bar{y})^2 + 2y_i(\bar{y} - \bar{y} - \left(\frac{YM}{MM}\right)(M_i - \Mbar)) - \bar{y}^2 + \bar{y}^2 \\
-       &\qquad + 2\bar{y}\left(\frac{YM}{MM}\right)(M_i - \Mbar) + \left(\frac{YM}{MM}\right)^2(M_i^2 - 2M_i\Mbar + \Mbar^2)\\
-       &= YY - 2\frac{(YM)^2}{MM} + \frac{(YM)^2}{MM}\\
-       &= YY - \frac{(YM)^2}{MM}
-\end{align}
-
-Since, $\chi^2_0 = YY$, we have
-
-\begin{equation}
-P(\omega) = \frac{(YM)^2}{YY\cdot MM}
-\end{equation}
-
-We wish to maximize $P(\omega)$ with respect to the phase shift parameter $\theta_2$,
-
-\begin{align}
-\label{eq:theta2cond}
-\partial_{\theta_2}P = 0 &= \frac{YM}{YY\cdot MM}\left(2\partial_{\theta_2}(YM) - \frac{YM}{MM}\partial_{\theta_2}(MM)\right)\\
-                         &= 2MM\partial_{\theta_2}(YM) - YM\partial_{\theta_2}(MM).
-\end{align}
-
-The final expression is the non-linear condition that must me satisfied by the optimal
-phase shift parameter $\theta_2$. However, satisfying Equation \ref{eq:theta2cond}
-is not \emph{sufficient} to gaurantee that $\theta_2$ is optimal. The value of the
-periodogram at each $\theta_2$ satisfying Equation \ref{eq:theta2cond} must be computed,
-and the globally optimal solution chosen from this set.
-
-We seek a more explicit form for Equation \ref{eq:theta2cond}. We first
-derive expressions for $MM$ and $YM$.
-
-\begin{align}
-MM &\equiv \sum_i w_i M_i^2\\
-   &= \sum_i w_i \left(\sum_nA_n\cos{\omega n t_i} + B_n\sin{\omega n t_i}\right)^2\\
-   &= \sum_n \sum_m A_nA_mCC_{nm} + (A_nB_mCS_{nm} + B_nA_m(CS^T)_{nm}) + B_nB_mSS_{nm}\\
-   &= \sum_n \sum_m A_nA_mCC_{nm} + 2A_nB_mCS_{nm} + B_nB_mSS_{nm}\\
-\end{align}
-
-
-Recall that
-
-\begin{align}
-A_n(x) &= c_n T_n(x) - s_nq\sqrt{1-x^2}U_{n-1}(x)\\
-B_n(x) &= s_n T_n(x) + c_nq\sqrt{1-x^2}U_{n-1}(x)\\
-\end{align}
-
-The expressions for $A_n(x)$ and $B_n(x)$ can be rewritten as
-
-\begin{align}
-A_n(x) &= c_nT_n(x) - qs_n\sqrt{1-x^2}U_{n-1}(x)\\
-       &= \left(\frac{c_n - iqs_n}{2}\right)\left(T_n(x) + \sqrt{x^2 - 1}U_{n-1}(x)\right) + \\
-       &\quad \left(\frac{c_n + iqs_n}{2}\right)\left(T_n(x) - \sqrt{x^2 - 1}U_{n-1}(x)\right)\\
-B_n(x) &=  \left(\frac{s_n + iqc_n}{2}\right)\left(T_n(x) + \sqrt{x^2 - 1}U_{n-1}(x)\right) + \\
-       &\quad \left(\frac{s_n - iqc_n}{2}\right)\left(T_n(x) - \sqrt{x^2 - 1}U_{n-1}(x)\right)
-\end{align}
-
-The Chebyshev polynomials satisfy the following property:
-
-\begin{equation}
-T_n(x) + \sqrt{x^2 - 1}U_{n-1}(x) = (x + \sqrt{x^2 - 1})^n
-\end{equation}
-
-From which we can also derive that
-
-\begin{equation}
-T_n(x) - \sqrt{x^2 - 1}U_{n-1}(x) = (x + \sqrt{x^2 - 1})^{-n}.
-\end{equation}
-
-This provides a convenient change of variables
-
-\begin{equation}
-y = x + \sqrt{x^2 - 1}
-\end{equation}
-
-with which to rewrite $A_n$ and $B_n$
-\begin{align}
-A_n(y) &= \left(\frac{c_n - iqs_n}{2}\right)y^n + \left(\frac{c_n + iqs_n}{2}\right)y^{-n}\\
-       &= \alpha_ny^n + \alpha^{*}_ny^{-n}\\
-B_n(y) &= \left(\frac{s_n + iqc_n}{2}\right)y^n + \left(\frac{s_n - iqc_n}{2}\right)y^{-n}\\
-       &= (iq)\left(\alpha_ny^n - \alpha^{*}_ny^{-n}\right)\\
-A_nA_m &= \left(\alpha_ny^n + \alpha^{*}_ny^{-n}\right)\left(\alpha_my^m + \alpha^{*}_my^{-m}\right)\\
-       &= \alpha_n\alpha_m y^{n+m} + \alpha^{*}_n\alpha_my^{m-n} + \alpha_n\alpha^{*}_m y^{n-m} + \alpha^{*}_n\alpha^{*}_my^{-(n+m)}\\
-A_nB_m &= (iq)\left(\alpha_ny^n + \alpha^{*}_ny^{-n}\right)\left(\alpha_my^m - \alpha^{*}_my^{-m}\right)\\
-       &= (iq)\left\{\alpha_n\alpha_m y^{n+m} + \alpha^{*}_n\alpha_my^{m-n} - \alpha_n\alpha^{*}_m y^{n-m} - \alpha^{*}_n\alpha^{*}_my^{-(n+m)}\right\}\\
-B_nB_m &= -\left(\alpha_ny^n - \alpha^{*}_ny^{-n}\right)\left(\alpha_my^m - \alpha^{*}_my^{-m}\right)\\
-       &= -\left\{\alpha_n\alpha_m y^{n+m} - \alpha^{*}_n\alpha_my^{m-n} - \alpha_n\alpha^{*}_m y^{n-m} + \alpha^{*}_n\alpha^{*}_my^{-(n+m)}\right\}
-\end{align}
-
-Now we have that 
-
-\begin{align}
-MM_{nm} &= A_nA_mCC_{nm} + 2A_nB_mCS_{nm} + B_nB_mSS_{nm}\\
-        &= \alpha_n\alpha_m\left(CC_{nm} + 2(iq)CS_{nm} - SS_{nm}\right)y^{n+m}\\
-        &\quad + 2\alpha_n\alpha^{*}_m\left(CC_{nm} - \frac{iq}{2}\left(CS_{nm} - CS^{T}_{nm}\right) - SS_{nm}\right)y^{n-m}\\
-        &\quad + (\alpha_n\alpha_m)^{*}\left(CC_{nm}  - 2(iq)CS_{nm} + SS_{nm}\right)y^{-(n+m)}\\
-        &= \alpha_n\alpha_m\CCt_{nm}y^{n+m} + 2\alpha_n\alpha^{*}_m\CSt_{nm}y^{n-m} + \alpha^{*}_n\alpha^{*}_m\SSt_{nm}y^{-(n+m)}
-\end{align}
-
-and for $YM$:
-
-\begin{align}
-YM_{k} &= A_kYC_k + B_kYS_k\\
-        &= \alpha_kYC_ky^k + \alpha_k^{*}YC_ky^{-k} + (iq)\left(\alpha_kYS_ky^k - \alpha^{*}_kYS_ky^{-k}\right)\\
-        &= (YC_k + iqYS_k)\alpha_ky^k + (YC_k - iqYS_k)\alpha^{*}_ky^{-k}\\
-        &= \alpha_k\YCt_k y^k + \alpha^{*}_k\YCt_k^{*} y^{-k}
-\end{align}
-
-since $n,m,k > 0$, we also have that
-
-\begin{align}
-\partial YM_k &= k\left(\alpha_k\YCt_k y^{k-1} - \alpha^{*}_k\YCt_k^{*} y^{-(k+1)}\right)\\
-\partial MM_{nm} &= (n+m)\alpha_n\alpha_m\CCt_{nm}y^{n+m-1} + 2(n-m)\alpha_n\alpha^{*}_m\CSt_{nm}y^{n-m-1} \\
-                &\quad- (n+m)\alpha^{*}_n\alpha^{*}_m\SSt_{nm}y^{-(n+m+1)}
-\end{align}
-
-and thus the final polynomial expression for $y$ can be derived by expanding Equation \ref{eq:theta2cond} in terms of $y$ and multiplying through by
- $y^{3H+1}$, to eliminate any polynomial terms in $(1/y)$.
-
-\begin{align}
-2k&\left(\alpha_k\YCt_k y^{H+k} - \alpha^{*}_k\YCt_k^{*} y^{H-k}\right)\left(\alpha_n\alpha_m\CCt_{nm}y^{2H+n+m} \right.\\
-&\qquad\qquad\left. + 2\alpha_n\alpha^{*}_m\CSt_{nm}y^{2H + n - m} + \alpha^{*}_n\alpha^{*}_m\SSt_{nm}y^{2H-n-m)}\right)\\
-& - \left(\alpha_k\YCt_k y^{H+k} + \alpha^{*}_k\YCt_k^{*} y^{H-k}\right)\left((n+m)\alpha_n\alpha_m\CCt_{nm}y^{2H+n+m} \right.\\
-&\qquad\qquad\left. + 2(n-m)\alpha_n\alpha^{*}_m\CSt_{nm}y^{2H+n-m} - (n+m)\alpha^{*}_n\alpha^{*}_m\SSt_{nm}y^{2H-n-m}\right) = 0
-\end{align}
-
-This could be expanded, however, it is usually more computationally efficient to compute four separate polynomials (that scale as $\bigO(H^2)$ and $\bigO(H)$),
-and performing two polynomial multiplication operations, which allow for the use of fast polynomial libraries.
-
-
-\end{appendix}
 \bibliographystyle{apj}
 \bibliography{refs}
 \end{document}
