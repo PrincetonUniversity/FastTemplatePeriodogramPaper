@@ -1,10 +1,10 @@
-\documentclass[apj]{emulateapj}
+\documentclass{aastex62}
 
 \shorttitle{Fast Template Periodogram}
 \shortauthors{Hoffman et al. 2016}
 
-\usepackage[backref,breaklinks,colorlinks,citecolor=blue]{hyperref}
-\usepackage[all]{hypcap}
+%\usepackage[backref,breaklinks,colorlinks,citecolor=blue]{hyperref}
+%\usepackage[all]{hypcap}
 %\renewcommand*{\backref}[1]{[#1]}
 \usepackage{amsmath}
 
@@ -82,18 +82,21 @@
 \title{A Fast Template Periodogram for Detecting Non-Sinusoidal Fixed-Shape Signals in Irregularly Sampled Time Series}
          %DRAFT VERSION \versioninfo }
 
-\author{J. Hoffman\altaffilmark{1},
-J. Vanderplas\altaffilmark{2},
-J.~D. Hartman\altaffilmark{1},
-G.~\'A Bakos\altaffilmark{1}\altaffilmark{3}}
+\correspondingauthor{John Hoffman}
 \email{jah5@princeton.edu}
-%\email{jakevdp@cs.washington.edu}
-%\email{jhartman@astro.princeton.edu}
-%\email{gbakos@astro.princeton.edu}
 
-\altaffiltext{1}{Department of Astrophysical Sciences, Princeton University, Princeton NJ 08540}
-\altaffiltext{2}{eScience Institute, University of Washington, Seattle, WA 98195}
-\altaffiltext{3}{Packard Fellow}
+\author[0000-0003-3770-5541]{J.~A. Hoffman}
+\affiliation{Department of Astrophysical Sciences, Princeton University, Princeton NJ 08540}
+
+\author[0000-0002-9623-3401]{J.~T. VanderPlas}
+\affiliation{eScience Institute, University of Washington, Seattle, WA 98195}
+
+\author[0000-0001-8732-6166]{J.~D. Hartman}
+\affiliation{Department of Astrophysical Sciences, Princeton University, Princeton NJ 08540}
+
+\author[0000-0001-7204-6727]{G.~\'A Bakos}
+\affiliation{Department of Astrophysical Sciences, Princeton University, Princeton NJ 08540}
+\affiliation{Packard Fellow}
 
 \begin{abstract}
     Astrophysical time series often contain periodic signals. The large and growing volume of time series data from
@@ -683,7 +686,7 @@ Therefore, the entire template periodogram scales as
 
 \begin{figure}
     \centering
-    \includegraphics[width=0.5\textwidth]{plots/timing_vs_nharm.pdf}
+    \includegraphics[width=0.5\textwidth]{timing_vs_nharm.pdf}
     \caption{\label{fig:timingnharm} Computation time of FTP scaled by $NH$ for
             different numbers of harmonics. For $H\lesssim 3$, FTP scales
             sublinearly in $H$ (possibly due to a constant overhead per
@@ -714,7 +717,7 @@ alone limit $H$ to reasonably small numbers $H\lesssim15$ (see Figure \ref{fig:t
 
 \begin{figure*}
     \centering
-    \includegraphics[width=\textwidth]{plots/templates_and_periodograms.pdf}
+    \includegraphics[width=\textwidth]{templates_and_periodograms.pdf}
     \caption{\label{fig:tempsandpdgs} Template periodograms performed on a simulated eclipsing
             binary lightcurve (shown phase-folded in the left-hand plots). The top-most plot
             uses only one harmonic, equivalent to a Lomb-Scargle periodogram. Subsequent plots
@@ -757,7 +760,7 @@ with a 10-harmonic truncated Fourier series.
 
 \begin{figure}
     \centering
-    \includegraphics[width=0.5\textwidth]{plots/correlation_with_nonlinopt.pdf}
+    \includegraphics[width=0.5\textwidth]{correlation_with_nonlinopt.pdf}
     \caption{\label{fig:corrwgats} Comparing accuracy between previous methods that rely
             on non-linear optimization at each trial frequency with the fast template periodogram
             described in this paper. Both methods are applied to the same simulated data as shown
@@ -771,7 +774,7 @@ with a 10-harmonic truncated Fourier series.
 
 \begin{figure*}
     \centering
-    \includegraphics[width=\textwidth]{plots/correlation_with_large_H.pdf}
+    \includegraphics[width=\textwidth]{correlation_with_large_H.pdf}
     \caption{\label{fig:corrwhighh} Comparing the template periodogram calculated with $H=10$ harmonics
             to the template periodogram using a smaller number of harmonics $H < 10$. The template and
             data used to perform the periodogram calculations are the same as those shown in Figure \ref{fig:tempsandpdgs}.}
@@ -799,8 +802,8 @@ periodogram for known, non-sinusoidal signal shapes.
 
 \begin{figure*}
     \centering
-    \includegraphics[width=0.45\textwidth]{plots/timing_vs_ndata.pdf}
-    \includegraphics[width=0.45\textwidth]{plots/timing_vs_ndata_const_freq.pdf}
+    \includegraphics[width=0.45\textwidth]{timing_vs_ndata.pdf}
+    \includegraphics[width=0.45\textwidth]{timing_vs_ndata_const_freq.pdf}
     \caption{\label{fig:timingndata} Computation time of FTP compared with alternative techniques
              that use non-linear optimization at each trial frequency. \emph{Left}: timing for the
              case when $N_f = ~12 N_{\rm obs}$, i.e. the cadence of the observations is constant.
@@ -942,7 +945,7 @@ alternative techniques.
 
 %\begin{figure}
 %\centering
-%\includegraphics[width=0.5\textwidth]{plots/timing_for_various_surveys.png}
+%\includegraphics[width=0.5\textwidth]{timing_for_various_surveys.png}
 %%\caption{\label{fig:surveys} Computational resources needed for performing
 %a single template periodogram ($H=6$) on an entire survey dataset. Our
 %python implementation of FTP improves computational efficiency of template
@@ -1062,6 +1065,6 @@ The computational complexity of this model scales as $\bigO(KN_fH\log N_fH + N_f
 Joel Hartman and GB acknowledge support from NASA grant NNX17AB61G. JTV is supported by the University of Washington eScience Institute, with funding from the Alfred P. Sloan Foundation, the Gordon and Betty Moore Foundation, and the Washington Research Foundation.
 \end{acknowledgements}
 
-\bibliographystyle{apj}
+\bibliographystyle{aasjournal}
 \bibliography{refs}
 \end{document}
