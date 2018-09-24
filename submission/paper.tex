@@ -816,7 +816,7 @@ periodogram for known, non-sinusoidal signal shapes.
 
 FTP scales asymptotically as $\bigO(N_fH\log N_fH)$ with respect to the number of trial frequencies,
 $N_f$ and as $\bigO(N_fH^3)$ with respect to the number of harmonics in which the template is expanded, $H$.
-However, for reasonable cases ($N_f \lesssim 10^{120}$ when $H=5$) the computation time is dominated by
+However, for reasonable cases ($N_f \lesssim 10^{50}$ when $H=5$)\footnote{Since the trigonometric sums take $\sim 5\%$ of the time when $N_f\sim 10^6$, the trigonometric sums should take 50\% of the time when $(0.05/0.95)\times(\log(HN_f) / \log(H\times 10^6)) = 1$ which occurs when $N_f\sim 10^{50}$}) the computation time is dominated by
 computing polynomial coefficients and root finding, both of which scale linearly in $N_f$.
 
 The number of trial frequencies needed for finding astrophysical signals in a typical photometric time series is
