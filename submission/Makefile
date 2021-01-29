@@ -7,4 +7,4 @@ all :
 	pdflatex $(name)
 
 clean :
-	rm -f *log *aux *bbl *blg *brf *out $(name)Notes.bib
+	rm -f *log *aux *blg *brf *out $(name)Notes.bib
