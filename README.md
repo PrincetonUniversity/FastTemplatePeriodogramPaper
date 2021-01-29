@@ -1,17 +1,5 @@
 # Paper for fast template periodogram
 
-### Notes
+This is a paper for the Fast Template Periodogram (https://github.com/PrincetonUniversity/FastTemplatePeriodogram)
 
-
-Feb 23, 2017
-------------
-Version 1 complete.
-
-
-Jan 25, 2017
-------------
-John Hoffman
-
-This paper is in good shape. Needs a conclusion, probably
-a few more citations, and I need to clean up and include the
-figures.
+Useful for efficiently fitting periodic templates to irregularly sampled, heteroscedastic (but uncorrelated) measurement uncertainties.
