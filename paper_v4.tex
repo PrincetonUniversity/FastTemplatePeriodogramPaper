@@ -94,7 +94,7 @@ G.~\'A Bakos\altaffilmark{3,}\altaffilmark{4}}
 \altaffiltext{1}{Xaxis, LLC, 3 World Trade Center, 175 Greenwich Street, 30th Floor, New York, NY 10007}
 \altaffiltext{2}{eScience Institute, University of Washington, Seattle, WA 98195}
 \altaffiltext{3}{Department of Astrophysical Sciences, Princeton University, Princeton NJ 08540}
-\altaffiltext{4}{Institute for Advanced Study, 1 Einsten Drive, Princeton, NJ}
+\altaffiltext{4}{Institute for Advanced Study, 1 Einstein Drive, Princeton, NJ}
 
 \begin{abstract}
     Astrophysical time series often contain periodic signals. The large and growing volume of time series data from
@@ -172,6 +172,8 @@ a given trial frequency $\omega = 2\pi / P$ where $P$ is the period:
 \chi^2(\omega) = \min_{\theta} \sum_i w_i (y_i - \hat{y}(t_i| \omega, \theta))^2
 \end{equation}
 
+
+
 \subsection{Bayesian interpretation}
 
 We note that, while this formalism captures many data and modeling scenarios, it is not completely general. For example, correlated
@@ -205,19 +207,37 @@ and therefore, since $P(\omega) = 1 - \chi^2(\omega) / \chi_0^2$,
 
 \begin{equation}
 \label{eq:lsismap}
-    P(\omega) = \frac{2}{W\chi_0^2} \max_\theta p(\omega, \theta|X) + \mathrm{const.}
+    P(\omega) = \frac{2}{W\chi_0^2} \max_\theta \log p(\omega, \theta|X) + \mathrm{const.}
 \end{equation}
 
 The Lomb-Scargle power is a linear transformation of the maximum of the log posterior over the non-frequency parameters, with the frequency parameter held fixed. Thus, choosing the frequency that maximizes the periodogram value corresponds to finding a MAP estimate of the frequency parameter.
 
 A MAP interpretation is more general, and is applicable to scenarios not considered in this paper (e.g. correlated uncertainties, multi-dimensional timeseries, etc.), since all of these problems are amenable to MAP estimation of their model parameters. However, in order to maintain consistency with notation in the Lomb-Scargle literature \citep[e.g.][]{Zechmeister+Kurster_2009,Vanderplas_2018}, we keep our definition of the periodogram restricted as above and only consider one-dimensional timeseries with heteroscedastic but uncorrelated uncertainties.
 
+\cite{Mortier_et_al_2015,Mortier_et_al_2015_code} explored a Bayesian interpretation of the periodogram. 
+Their frequency periodogram definition marginalizes over non-frequency parameters in contrast to a 
+(scaled) MAP value of the log likelihood discussed here. They use similar assumptions (uncorrelated, 
+Normal measurement uncertainties) and use uniform priors on non-frequency parameters, but their 
+periodogram power was based on marginal probabilities 
+$P(\omega) = p(\omega|X) \propto \int_{\theta \in \Theta} p(\omega, \theta|X)p(\omega, \theta)$ 
+where here the periodogram power is related to log-probabilities $\log p(\omega|X, \hat{\theta}(\omega))$ 
+where $\omega$ is the angular frequency, $X$ is shorthand for observations, 
+and $\hat{\theta}(\omega)$ are the non-frequency parameters that 
+maximize $\log p(\omega, \theta|X)$ at a given trial frequency. 
+
+Additionally, \cite{Mortier_et_al_2015} do not specifically consider the problem examined in this paper (periodic template fitting); they derive results for the classical periodogram model (sinusoidal model without constant offset) derived in
+\cite{Lomb_1976} and \cite{Scargle_1982} as well as the extension with a constant offset derived in \cite{Zechmeister+Kurster_2009}. However, their general methodology (defining the periodogram power in terms of marginal probabilities), can be applied to our case and others.
+
+As remarked in \citep{Vanderplas_2018}, Bayesian periodogram results should be taken with a grain of salt -- usually the underlying assumptions of the statistical model (uncorrelated, Normally-distributed measurement uncertainties, no systematics, etc.) are broken in many real-world astronomical timeseries..
+
+
+
 \subsection{Extending Lomb-Scargle}
 
 The LS periodogram has numerous extensions to account for, e.g., biased estimates of the mean brightness
-\citep{Zechmeister+Kurster_2009}, non-sinusoidal signals \citep{Schwarzenberg-Czerny_1996,Palmer_2009},
+\citep{Zechmeister+Kurster_2009}, non-sinusoidal signals \citep{Schwarzenberg-Czerny_1996,Bretthorst_2003,Palmer_2009,Baluev_2009,Baluev_2013a}, multiple periodicities \citep{Baluev_2013b,Baluev_2013c},
 multi-band observations \citep{Vanderplas+Ivezic_2015}, and to mitigate overfitting of more
-flexible models via regularization \citep{Vanderplas+Ivezic_2015}. For a detailed review
+flexible models via regularization \citep{Vanderplas+Ivezic_2015}. \cite{Baluev_2008} provided the framework for improving false alarm statistics with extreme value theory, and this was generalized further in \cite{Baluev_2013}. For a more detailed review
 of the LS periodogram and its extensions, see \cite{Vanderplas_2018}.
 
 The multi-harmonic LS periodogram \citep[][MHGLS]{Bretthorst+Chi-Cheng_1988,Schwarzenberg-Czerny_1996,Palmer_2009}, provides a more
@@ -1024,6 +1044,8 @@ alternative techniques.
 
 %Appendix: Proof that GLS is recovered when H=1
 
+
+
 \begin{appendix}
 
 \section{Shared-phase multi-band template periodogram}\label{sec:shphmult}
@@ -1109,10 +1131,13 @@ After computing the polynomials $MM'$ and $YM'$, the polynomial in Equation \ref
 
 The computational complexity of this model scales as $\bigO(KN_fH\log N_fH + N_fH^3)$ where $K$ is the number of filters. Since the polynomial zero-finding step is the limiting computation in most real-world applications, the multi-band template periodogram corresponding to the \cite{Sesar_etal_2016} model should not be significantly more computationally intensive than the single-band case.
 
+\section{Data availibility}
+The data underlying this article are available in the GitHub repository located at \href{https://github.com/PrincetonUniversity/FastTemplatePeriodogramPaper}{https://github.com/PrincetonUniversity/FastTemplatePeriodogramPaper}.
+
 \end{appendix}
 
 \begin{acknowledgements}
-    Joel Hartman and GB acknowledge support from NASA grant NNX17AB61G. JTV is supported by the University of Washington eScience Institute, with funding from the Alfred P. Sloan Foundation, the Gordon and Betty Moore Foundation, and the Washington Research Foundation. The data underlying this article are available in the GitHub repository located at \href{https://github.com/PrincetonUniversity/FastTemplatePeriodogramPaper}{https://github.com/PrincetonUniversity/FastTemplatePeriodogramPaper}.
+    Joel Hartman and GB acknowledge support from NASA grant NNX17AB61G. JTV is supported by the University of Washington eScience Institute, with funding from the Alfred P. Sloan Foundation, the Gordon and Betty Moore Foundation, and the Washington Research Foundation.
 \end{acknowledgements}
 
 \bibliographystyle{apj}
