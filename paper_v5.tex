@@ -787,9 +787,23 @@ step scales as $\bigO(H^3N_f)$. The computation of the sums
 
 Therefore, the entire template periodogram scales as
 
-\begin{equation}
-\bigO(HN_f \log HN_f + H^3N_f).
+\begin{equation}\label{eq:bigO}
+\bigO(HN_f \log HN_f) \;+\; \bigO(H^3N_f).
 \end{equation}
+
+We have written the bound as the sum of two independent
+contributions in order to emphasize that the two terms are
+governed by different operations and dominate in different
+regimes.  The first term, from the non-equispaced fast Fourier
+transforms used to compute the $C$ and $S$ sums of
+Equations \ref{eq:CCdef}--\ref{eq:YSdef}, dominates at low
+$H$ and large $N_f$ -- the regime typical of large surveys with
+near-sinusoidal templates.  The second term, from constructing
+and rooting the degree-$(6H-1)$ polynomial of
+Equation \ref{eq:finalpoly} at every trial frequency, dominates
+at moderate-to-high $H$ and moderate $N_f$ -- the regime typical
+of sharply peaked templates such as eclipsing-binary or
+planet-transit shapes.
 
 However, an important consideration is that the peak width scales inversely with the number of harmonics $\delta f_{\mathrm{peak}} \propto 1/H$ and so the number of trial frequencies needed to resolve a peak increases linearly with the number of harmonics in the template.
 
@@ -964,6 +978,28 @@ Polynomial algebra is performed using the \texttt{numpy.polynomial} module
 \footnote{\url{https://github.com/jakevdp/nfft}} which provides a Python
 implementation of the non-equispaced fast Fourier transform,
 is used to compute the necessary sums for a particular time series.
+
+The high-level entry point, \texttt{autopower(samples\_per\_peak=...)},
+exposes the trial-frequency grid density as a user parameter:
+\texttt{samples\_per\_peak} is the number of trial frequencies that
+cover one full-width of a periodogram peak.  Because the peak width
+scales roughly as $\delta f_{\mathrm{peak}}\propto 1/H$
+(Section \ref{sec:compreqs}), the value of \texttt{samples\_per\_peak}
+must scale at least linearly with $H$ to avoid under-sampling the
+peaks.  In particular, the conventional default
+\texttt{samples\_per\_peak}~$=10$, which is a reasonable choice for
+near-sinusoidal ($H=1$) templates, implies only $\sim 1$ trial
+frequency per peak at $H=10$; an empirical inspection at $H=7$ shows
+that peaks are only about three samples wide on the
+\texttt{samples\_per\_peak}~$=10$ grid, so the true frequency can be
+missed in favor of a noise peak.  For the sharper templates studied
+in Section \ref{sec:choiceH} -- in particular the trapezoidal-transit
+and detached-EB shapes, which require $H_{95\%}=12$ in
+Table \ref{tab:hvsaccuracy} -- \texttt{samples\_per\_peak}~$\gtrsim 30$
+is a more defensible default.  This is the runtime/grid-density
+versus peak-recovery tradeoff documented in the open-source
+implementation, and users selecting $H$ via Section \ref{sec:choiceH}
+should adjust \texttt{samples\_per\_peak} accordingly.
 
 No explicit parallelism is used anywhere in the current implementation,
 however certain linear algebra operations in \texttt{Scipy} use OpenMP
