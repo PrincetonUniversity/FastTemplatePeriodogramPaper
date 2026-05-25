@@ -385,6 +385,23 @@ the completeness of the final sample by applying template fits to a larger numbe
 which would require either more computational resources, more time, or, ideally, a more efficient
 template fitting procedure.
 
+We note that the fast template periodogram, like the LS periodogram, assumes that the reported
+photometric uncertainties $\sigma_i$ are strictly positive and fully describe the noise.
+In practice, real photometric data frequently exhibit additional intrinsic scatter (or ``equation error'')
+beyond the reported $\sigma_i$, so that the model--data residual variance exceeds $\sigma_i^2$.
+In the least-squares context, the FITEXY algorithm \citep[Press et al. 1992, \emph{Numerical Recipes};
+see also][]{Press+Rybicki_1989} and the BCES estimators of \citet{Akritas+Bershady_1996}
+accommodate heteroscedastic measurement errors together with a homoscedastic equation-error term,
+and \citet{Kelly_2007} shows that a hierarchical-Bayesian, likelihood-based treatment
+delivers less bias and higher accuracy than these least-squares approximations
+(with reference implementations available as \texttt{LINMIX\_ERR} in IDL, \texttt{linmix} in Python,
+and \texttt{lrgs} in R). Extending the FTP to jointly infer an unknown intrinsic scatter would
+require a likelihood-based generalization beyond the closed-form least-squares structure exploited here
+and is out of scope for the present paper. As a first-order practical correction, users with
+evidence of underestimated uncertainties can inflate each $\sigma_i$ by a jitter term added in
+quadrature ($\sigma_i^2 \rightarrow \sigma_i^2 + s^2$), as is standard practice in radial-velocity
+and \emph{TESS} analyses; the FTP machinery is unchanged.
+
 The paper is organized as follows. Section \ref{sec:derivations} poses the problem of template
 fitting in the language of least squares spectral analysis and derives the fast template
 periodogram. Section \ref{sec:implementation} describes a freely available implementation
