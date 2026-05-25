@@ -163,81 +163,116 @@ in the literature \citep{Zechmeister+Kurster_2009}, but we adopt the following d
 
 \begin{equation}
 \label{eq:lsp}
-P(\omega) = \frac{\chi^2_0 - \chi^2(\omega)}{\chi^2_0}
+P(\omega) = \frac{V_0 - V(\omega)}{V_0}
 \end{equation}
 
-Where $\chi^2_0$ is the weighted sum of squared residuals for a constant fit:
+where $V_0$ is the weighted sum of squared residuals for a constant fit:
 
 \begin{equation}
-\chi^2_0 = \sum_i w_i (y_i - \bar{y})^2
+V_0 = \sum_i w_i (y_i - \bar{y})^2
 \end{equation}
 
-where $\bar{y} = \sum_i w_i y_i$ is the weighted mean of the observations, and
-$w_i \propto \sigma_i^{-2}$ are the normalized weights for each observation ($\sum_i w_i = 1$),
-and $\chi^2(\omega)$ is the weighted sum of squared residuals for the best-fit model $\hat{y}$ at
-a given trial frequency $\omega = 2\pi / P$ where $P$ is the period:
+with $\bar{y} = \sum_i w_i y_i$ the weighted mean of the observations and
+$w_i \propto \sigma_i^{-2}$ the normalised weights for each observation
+($\sum_i w_i = 1$), and $V(\omega)$ is the weighted sum of squared residuals
+for the best-fit model $\hat{y}$ at a given trial frequency
+$\omega = 2\pi / P$ where $P$ is the period:
 
 \begin{equation}
-\chi^2(\omega) = \min_{\theta} \sum_i w_i (y_i - \hat{y}(t_i| \omega, \theta))^2
+V(\omega) = \min_{\theta} \sum_i w_i (y_i - \hat{y}(t_i; \omega, \theta))^2.
 \end{equation}
 
+We use the symbol $V$ rather than $\chi^2$ to follow the convention common in
+the linear least-squares literature: with $\sum_i w_i = 1$ the quantity
+$\sum_i w_i (y_i - \hat{y}_i)^2$ is the weighted sum of squared residuals but
+is not strictly $\chi^2$-distributed, so the $\chi^2$ symbol can be misleading.
 
 
-\subsection{Bayesian interpretation}
 
-We note that, while this formalism captures many data and modeling scenarios, it is not completely general. For example, correlated
-uncertainties are not handled here. A more general Bayesian treatment of periodic models in astronomical timeseries
-is better handled by expressing a posterior over the model parameters.
+\subsection{Maximum-likelihood interpretation}
+\label{sec:max-likelihood}
 
-Assuming a Gaussian likelihood for the observations $y_i \sim \mathcal{N}(\hat{y}(t_i; \omega, \theta), \sigma^2_i)$, and uniform
-priors on both the frequency parameter $\omega$ and the non-frequency parameters $\theta$, the posterior is
-
-\begin{align}
-    p(\omega, \theta|\mathcal{D}) &= \frac{p(\mathcal{D}|\omega, \theta)p(\omega, \theta)}{p(\mathcal{D})}\\
-                        &\propto p(\omega, \theta) \prod_{i=1}^{N_{\mathrm{obs}}}\mathcal{N}(\hat{y}(t_i; \omega, \theta), \sigma^2_i)
-\end{align}
-
-where we use $\mathcal{D} = \{(t_i, y_i, \sigma_i) \,|\, 0 < i \le N_{\mathrm{obs}}\}$ as shorthand for the lightcurve observations (avoiding the symbol $X$, which is conventionally reserved for the design matrix). The logarithm of the posterior is
-
-\begin{align}
-    \log p(\omega, \theta|\mathcal{D}) &= -\frac{1}{2}\sum_{i=1}^{N_{\mathrm{obs}}}\left(\frac{y_i - \hat{y}(t_i; \omega, \theta)}{\sigma_i}\right)^2 + \mathrm{const.}\\
-                             &= -\frac{W}{2}\sum_{i=1}^{N_{\mathrm{obs}}}w_i (y_i - \hat{y}(t_i; \omega, \theta))^2 + \mathrm{const.}
-\end{align}
-
-where $W= \sum_i \sigma_i^{-2}$. Thus, 
-
-\begin{align}
-    \chi^2(\omega) &= \min_{\theta} \sum_i w_i (y_i - \hat{y}(t_i|\omega, \theta))^2\\
-                   &= \min_{\theta}\left(-\frac{2}{W}\log p(\omega, \theta|\mathcal{D}) + \mathrm{const.}\right)\\
-                   &= -\frac{2}{W}\max_\theta \log p(\omega, \theta|\mathcal{D}) + \mathrm{const.}
-\end{align}
-
-and therefore, since $P(\omega) = 1 - \chi^2(\omega) / \chi_0^2$,
+Although the periodogram in Equation~\ref{eq:lsp} is most commonly introduced
+as a least-squares fit, it has a direct probabilistic reading. Under the
+standard noise assumptions made throughout this paper -- uncorrelated, zero-mean,
+Gaussian uncertainties $y_i \sim \mathcal{N}(\hat{y}(t_i; \omega, \theta), \sigma_i^2)$ --
+the likelihood of the data given the model parameters is
 
 \begin{equation}
-\label{eq:lsismap}
-    P(\omega) = \frac{2}{W\chi_0^2} \max_\theta \log p(\omega, \theta|\mathcal{D}) + \mathrm{const.}
+    p(\mathcal{D}|\omega, \theta) = \prod_{i=1}^{N_{\mathrm{obs}}}\mathcal{N}(\hat{y}(t_i; \omega, \theta), \sigma^2_i),
 \end{equation}
 
-The Lomb-Scargle power is a linear transformation of the maximum of the log posterior over the non-frequency parameters, with the frequency parameter held fixed. Thus, choosing the frequency that maximizes the periodogram value corresponds to finding a MAP estimate of the frequency parameter.
+where we use $\mathcal{D} = \{(t_i, y_i, \sigma_i) \,|\, 0 < i \le N_{\mathrm{obs}}\}$ as shorthand for the lightcurve observations (avoiding the symbol $X$, which is conventionally reserved for the design matrix). The log-likelihood is
 
-A MAP interpretation is more general, and is applicable to scenarios not considered in this paper (e.g. correlated uncertainties, multi-dimensional timeseries, etc.), since all of these problems are amenable to MAP estimation of their model parameters. However, in order to maintain consistency with notation in the Lomb-Scargle literature \citep[e.g.][]{Zechmeister+Kurster_2009,Vanderplas_2018}, we keep our definition of the periodogram restricted as above and only consider one-dimensional timeseries with heteroscedastic but uncorrelated uncertainties.
+\begin{align}
+    \log p(\mathcal{D}|\omega, \theta) &= -\frac{1}{2}\sum_{i=1}^{N_{\mathrm{obs}}}\left(\frac{y_i - \hat{y}(t_i; \omega, \theta)}{\sigma_i}\right)^2 + \mathrm{const.}\\
+                                       &= -\frac{W}{2}\,V(\theta, \omega) + \mathrm{const.},
+\end{align}
 
-\cite{Mortier_et_al_2015,Mortier_et_al_2015_code} explored a Bayesian interpretation of the periodogram. 
-Their frequency periodogram definition marginalizes over non-frequency parameters in contrast to a 
-(scaled) MAP value of the log likelihood discussed here. They use similar assumptions (uncorrelated, 
-Normal measurement uncertainties) and use uniform priors on non-frequency parameters, but their 
-periodogram power was based on marginal probabilities 
-$P(\omega) = p(\omega|\mathcal{D}) \propto \int_{\theta \in \Theta} p(\omega, \theta|\mathcal{D})p(\omega, \theta)$
-where here the periodogram power is related to log-probabilities $\log p(\omega|\mathcal{D}, \hat{\theta}(\omega))$
-where $\omega$ is the angular frequency, $\mathcal{D}$ is shorthand for observations,
-and $\hat{\theta}(\omega)$ are the non-frequency parameters that
-maximize $\log p(\omega, \theta|\mathcal{D})$ at a given trial frequency.
+where $W = \sum_i \sigma_i^{-2}$ and
+$V(\theta,\omega) \equiv \sum_i w_i (y_i - \hat{y}(t_i; \omega, \theta))^2$ is
+the weighted sum of squared residuals written with the normalised weights
+$w_i = \sigma_i^{-2}/W$ ($\sum_i w_i = 1$). Hence
 
-Additionally, \cite{Mortier_et_al_2015} do not specifically consider the problem examined in this paper (periodic template fitting); they derive results for the classical periodogram model (sinusoidal model without constant offset) derived in
-\cite{Lomb_1976} and \cite{Scargle_1982} as well as the extension with a constant offset derived in \cite{Zechmeister+Kurster_2009}. However, their general methodology (defining the periodogram power in terms of marginal probabilities), can be applied to our case and others.
+\begin{align}
+    V(\omega) &= \min_{\theta} \sum_i w_i (y_i - \hat{y}(t_i; \omega, \theta))^2\\
+              &= -\frac{2}{W}\max_\theta \log p(\mathcal{D}|\omega, \theta) + \mathrm{const.},
+\end{align}
 
-As remarked in \citep{Vanderplas_2018}, Bayesian periodogram results should be taken with a grain of salt -- usually the underlying assumptions of the statistical model (uncorrelated, Normally-distributed measurement uncertainties, no systematics, etc.) are broken in many real-world astronomical timeseries..
+and therefore, since $P(\omega) = 1 - V(\omega) / V_0$,
+
+\begin{equation}
+\label{eq:lsasml}
+    P(\omega) = \frac{2}{W V_0} \max_\theta \log p(\mathcal{D}|\omega, \theta) + \mathrm{const.}
+\end{equation}
+
+The Lomb-Scargle power is therefore a linear, monotonically increasing
+transformation of the profile log-likelihood -- that is, of the log-likelihood
+maximised over the non-frequency parameters $\theta$ at each trial $\omega$.
+Choosing the frequency that maximises the periodogram is equivalent to
+selecting the maximum-likelihood frequency estimate under the assumed noise
+model.
+
+It is tempting to recast this as a maximum-a-posteriori (MAP) statement under
+an implicit uniform prior on $\theta$, but we deliberately avoid that framing
+for two reasons. First, a uniform prior over an unbounded domain is improper;
+recovering the periodogram as a strict MAP quantity would require a piecewise
+prior on $(\theta_0, \theta_1)$ that vanishes outside some explicitly chosen
+bounding box, which we do not impose. Second, even when bounded, a uniform
+prior on $(\theta_0, \theta_1)$ implicitly imposes a linear prior on the
+sinusoid amplitude $A \equiv \sqrt{\theta_0^2 + \theta_1^2}$, since the prior
+volume element in the $(\theta_0, \theta_1)$ plane is
+$\mathrm{d}\theta_0\,\mathrm{d}\theta_1 = A\,\mathrm{d}A\,\mathrm{d}\phi$.
+A uniform prior on the Cartesian coefficients therefore biases the inference
+towards large amplitudes. The same pitfall is recognised in exoplanet
+eccentricity inference, where the parameterisation
+$(e\cos\varpi,\, e\sin\varpi)$ -- introduced for sampling efficiency by
+\cite{Ford_2006} -- implicitly imposes a linear prior on the eccentricity $e$
+that has since been corrected for or replaced
+\citep{Eastman_etal_2013}. The maximum-likelihood reading invoked here makes
+none of these implicit prior assumptions, and we adopt it throughout.
+
+A genuinely Bayesian treatment of the LS periodogram, in which the
+non-frequency parameters are marginalised rather than profiled, was developed
+by \cite{Mortier_et_al_2015,Mortier_et_al_2015_code}. Their periodogram power
+is
+
+\begin{equation*}
+P_{\rm Bayes}(\omega) \propto p(\omega|\mathcal{D}) = \int p(\omega, \theta|\mathcal{D})\,\mathrm{d}\theta,
+\end{equation*}
+
+evaluated under the same uncorrelated-Gaussian noise model but with explicit,
+bounded priors on the non-frequency parameters. \cite{Mortier_et_al_2015}
+focus on the classical periodogram model of \cite{Lomb_1976} and
+\cite{Scargle_1982} together with the constant-offset extension of
+\cite{Zechmeister+Kurster_2009}; the same marginalisation strategy could in
+principle be applied to the template-based formulation developed in this paper.
+
+As remarked in \citep{Vanderplas_2018}, the probabilistic interpretation of a
+periodogram is only as good as the noise model underlying it; in practice the
+working assumptions (uncorrelated, Gaussian uncertainties, no systematics) are
+often broken in real astronomical timeseries, and the maximum-likelihood
+reading above should be understood with the same caveats.
 
 
 
@@ -264,10 +299,14 @@ contains only $2$ ($3$ if the mean brightness is considered a free parameter). I
 harmonics adds model complexity, which can degrade the sensitivity of the MHLS periodogram to
 sinusoidal or approximately sinusoidal signals.
 
-Tikhonov regularization (or $L_2$ regularization), is one tool for mitigating overfitting
-of the higher order harmonics. However, adding an $L_2$ regularization term to the Fourier amplitudes
-adds bias to the model, and that bias should be compared to the value added by the
-decrease in model variance \citep{Vanderplas+Ivezic_2015}.
+Tikhonov regularisation (also known as $L_2$ regularisation) is one tool for
+mitigating overfitting of the higher-order harmonics. Adding an $L_2$ penalty
+on the Fourier amplitudes is equivalent to imposing a zero-mean Gaussian prior
+on those amplitudes; in the limit of infinite prior width, this prior reduces
+to the implicit (improper) uniform prior used in the unregularised fit. The
+choice of prior width is therefore a subjective modelling decision rather than
+a bias in the statistical sense, and its merits should be weighed against the
+corresponding decrease in model variance \citep{Vanderplas+Ivezic_2015}.
 
 \subsection{Computational scaling}
 
@@ -391,17 +430,17 @@ The optimal parameters are the location of a local minimum of the (weighted) sum
 squared residuals,
 
 \begin{equation}
-    \chi^2(\theta, S) \equiv \sum_i w_i (y_i - \hat{y}(\omega t_i;\theta) )^2,
+    V(\theta, S) \equiv \sum_i w_i (y_i - \hat{y}(\omega t_i;\theta) )^2,
 \end{equation}
 
 \noindent and thus the following condition must hold for all three model parameters at
 the optimal solution $\theta=\theta_{\rm opt}$:
 
 \begin{equation}\label{eq:chi2conds}
-    \left.\frac{\partial\chi^2}{\partial\theta_j}\right|_{\theta=\theta_{\rm opt}} = 0~~\forall\theta_j\in\theta.
+    \left.\frac{\partial V}{\partial\theta_j}\right|_{\theta=\theta_{\rm opt}} = 0~~\forall\theta_j\in\theta.
 \end{equation}
 
-Note that we have implicitly assumed $\chi^2(\theta,S)$ is a $C^1$ differentiable
+Note that we have implicitly assumed $V(\theta,S)$ is a $C^1$ differentiable
 function of $\theta$, which requires that $\mathbf{M}$ is a
 $C^1$ differentiable function. Though this assumption could be violated if we
 considered a more complete set of templates, (e.g. a box function), our restriction
@@ -433,7 +472,7 @@ using
 
 \begin{equation}\label{eq:simpconds}
 \begin{split}
-0 &= \left.\frac{\partial\chi^2}{\partial\theta_j}\right|_{\theta=\theta_{\rm opt}}\\
+0 &= \left.\frac{\partial V}{\partial\theta_j}\right|_{\theta=\theta_{\rm opt}}\\
   &= -2\sum_i w_i\left(y_i - \hat{y}_i \right)(\partial_j\hat{y})_i \\
 \sum_i w_iy_i(\partial_j\hat{y})_i&= \sum_i w_i \hat{y}_i(\partial_j\hat{y})_i.
 \end{split}
@@ -478,18 +517,18 @@ YM &= \scov(\Mshft, y) = \YMhat - \bar{y}\Mbar
 
 For a given phase shift $\theta_2$, the optimal amplitude and
 offset are obtained from requiring the partial derivatives of the
-sum of squared residuals, $\chi^2$, to be zero.
+sum of squared residuals, $V$, to be zero.
 
 Namely, we obtain that
 \begin{align}
-0 = \frac{\partial\chi^2}{\partial\theta_1} &= 2\sum_iw_i(y_i - \hat{y}_i)\left(-\frac{\partial\hat{y}}{\partial\theta_1}\right)_i\\
+0 = \frac{\partial V}{\partial\theta_1} &= 2\sum_iw_i(y_i - \hat{y}_i)\left(-\frac{\partial\hat{y}}{\partial\theta_1}\right)_i\\
     &= \sum_iw_i(y_i - \theta_1\Mshft - \theta_3)\Mshft\\
     &= \YMhat - \theta_1 \MMhat - \theta_3 \Mbar
 \end{align}
 
 and
 \begin{align}
-0 = \frac{\partial\chi^2}{\partial\theta_3} &= 2\sum_iw_i(y_i - \hat{y}_i)\left(-\frac{\partial\hat{y}}{\partial\theta_3}\right)_i\\
+0 = \frac{\partial V}{\partial\theta_3} &= 2\sum_iw_i(y_i - \hat{y}_i)\left(-\frac{\partial\hat{y}}{\partial\theta_3}\right)_i\\
     &= \sum_iw_i(y_i - \theta_1\Mshft - \theta_3)\\
     &= \bar{y} - \theta_1 \Mbar - \theta_3
 \end{align}
@@ -529,10 +568,10 @@ This means we can rewrite the model $\hat{y} = \theta_1\Mshft + \theta_3$ as
 \hat{y}_i = \bar{y} + \left(\frac{YM}{MM}\right)(M_i - \Mbar)
 \end{equation}
 
-To obtain an expression for the periodogram, $P = 1 - \chi^2 / \chi^2_0$, we first compute $\chi^2$
+To obtain an expression for the periodogram, $P = 1 - V / V_0$, we first compute $V$
 
 \begin{align}
-\chi^2 &= \sum_i w_i (y_i - \hat{y}_i)^2 \\
+V &= \sum_i w_i (y_i - \hat{y}_i)^2 \\
        &= \sum_i w_i (y_i^2 - 2y_i\hat{y}_i + \hat{y}_i^2)\\
        %&= \sum_i w_i ((y_i - \bar{y})^2 + 2y_i(\bar{y} - \bar{y} - \left(\frac{YM}{MM}\right)(M_i - \Mbar)) - \bar{y}^2 + \bar{y}^2 \\
        %&\qquad + 2\bar{y}\left(\frac{YM}{MM}\right)(M_i - \Mbar) + \left(\frac{YM}{MM}\right)^2(M_i^2 - 2M_i\Mbar + \Mbar^2)\\
@@ -540,7 +579,7 @@ To obtain an expression for the periodogram, $P = 1 - \chi^2 / \chi^2_0$, we fir
        &= YY - \frac{(YM)^2}{MM}
 \end{align}
 
-Since, $\chi^2_0 = YY$, we have
+Since, $V_0 = YY$, we have
 
 \begin{equation}
 P(\omega) = \frac{(YM)^2}{YY\cdot MM}
@@ -721,10 +760,10 @@ be expressed as a linear combination of single-band periodograms:
 
 \begin{equation}
 \label{eq:multibandmultiphase}
-P^{(0,1)}(\omega) = \frac{\sum_{k=1}^K\chi^2_{0, k}P_{k}(\omega)}{\sum_{k=1}^K\chi^2_{0,k}}
+P^{(0,1)}(\omega) = \frac{\sum_{k=1}^K V_{0, k}\,P_{k}(\omega)}{\sum_{k=1}^K V_{0,k}}
 \end{equation}
 
-\noindent where $K$ denotes the number of bands, $\chi^2_{0,k}$ is the weighted sum of squared
+\noindent where $K$ denotes the number of bands, $V_{0,k}$ is the weighted sum of squared
 residuals between the data in the $k$-th band and its weighted mean $\savg{y}$, and $P_k(\omega)$ is
 the periodogram value of the $k$-th band at the trial frequency $\omega$.
 
@@ -858,7 +897,7 @@ with a 10-harmonic truncated Fourier series.
 \end{figure*}
 
 For weak signals or signals folded at the incorrect trial period, there
-may be a large number of local $\chi^2$ minima in the parameter space, and thus
+may be a large number of local $V$ minima in the parameter space, and thus
 non-linear optimization algorithms may have trouble finding the global minimum. The
 FTP, on the other hand, solves for the optimal parameters directly, and
 thus is able to recover optimal solutions even when the signal is weak
@@ -974,7 +1013,7 @@ sufficiently smooth to be explained by a small number of Fourier terms.
 
 FTP also improves the accuracy of previous template fitting algorithms,
 which rely on non-linear optimization at each trial frequency to minimize
-the $\chi^2$ of the template fit. The FTP routinely finds superior fits over
+the $V$ of the template fit. The FTP routinely finds superior fits over
 non-linear optimization methods.
 
 An open-source Python implementation of the FTP is available at
@@ -1077,22 +1116,22 @@ The $i$-th observation in the $k$-th filter is denoted $\yk_i$. We wish to fit a
 \yhk(t;\theta) = \theta_1\Mtk(\omega t - \theta_2) + \theta_3 + \lk
 \end{equation}
 
-where $\lk$ is a fixed relative offset for band $k$. The $\chi^2$ for this model is
+where $\lk$ is a fixed relative offset for band $k$. The $V$ for this model is
 
 \begin{equation}
-\chi^2 = \sum_{k=1}^{K}\sum_{i=1}^{N_k}\wk_i \left(\yk_i - \yhk_i\right)^2
+V = \sum_{k=1}^{K}\sum_{i=1}^{N_k}\wk_i \left(\yk_i - \yhk_i\right)^2
 \end{equation}
 
 To make things simpler, we can set the $\lk$ values to 0 simply by subtracting them off from our observations; this means we take all $\yk_i \rightarrow \yk_i - \lk$. We have that
 
 \begin{equation}
-\chi^2 = \sum_{k=1}^K \Wtk\chi^2_k
+V = \sum_{k=1}^K \Wtk V_k
 \end{equation}
 
 Where $\Wtk \equiv \sum_{i=1}^{N_k}\wk_i$ and $\sum_{k=1}^K\Wtk = 1$. This means that the system of equations reduces to:
 
 \begin{equation}
-0 = \frac{\partial\chi^2}{\partial\theta_1} = \sum_{k=1}^K \Wtk\left(\YMh - \theta_1\MMh - \theta_3\Mbk\right)
+0 = \frac{\partial V}{\partial\theta_1} = \sum_{k=1}^K \Wtk\left(\YMh - \theta_1\MMh - \theta_3\Mbk\right)
 \end{equation}
 
 for the $\theta_1$ parameter, where $\YMh$, $\MMh$, $\Mbk$ are values from the single band case computed for each band individually, holding $\Wtk = 1$ for each band. That is:
@@ -1108,7 +1147,7 @@ for the $\theta_1$ parameter, where $\YMh$, $\MMh$, $\Mbk$ are values from the s
 For the offset $\theta_3$, we have
 
 \begin{equation}
-0 = \frac{\partial\chi^2}{\partial\theta_3} = \sum_{k=1}^K \Wtk\left(\yb - \theta_1\Mbk - \theta_3\right)
+0 = \frac{\partial V}{\partial\theta_3} = \sum_{k=1}^K \Wtk\left(\yb - \theta_1\Mbk - \theta_3\right)
 \end{equation}
 
 Where $\yb$ is the weighted-mean for the $k$-th band ($\yb \equiv (1/\Wtk)\sum_{i=1}^{N_k}\wk_i\yk_i$), again with $\yk_i \rightarrow \yk_i - \lk$.
@@ -1132,7 +1171,7 @@ The form of the periodogram has the same form as the single-band case:
 
 %\begin{equation}
 \begin{align}
-\chi^2 &=\sum_{k=1}^{K}\sum_{i=1}^{N_k}\wk_i \left(\yk_i - \yhk_i\right)^2\\
+V &=\sum_{k=1}^{K}\sum_{i=1}^{N_k}\wk_i \left(\yk_i - \yhk_i\right)^2\\
        &=\sum_{k=1}^{K}\sum_{i=1}^{N_k}\wk_i \left((\yk_i - \bar{y}) - \left(\frac{YM}{MM}\right)(M_i^{(k)} - \Mbar)\right)^2\\
        &=\sum_{k=1}^{K}\sum_{i=1}^{N_k}\wk_i \left((\yk_i - \bar{y})^2 - 2\left(\frac{YM}{MM}\right)(M_i^{(k)} - \Mbar)(\yk_i - \bar{y}) + \left(\frac{YM}{MM}\right)^2(M_i^{(k)} - \Mbar)^2\right)^2\\
        &=YY - 2\frac{(YM)^2}{MM} + \frac{(YM)^2}{MM}\\
