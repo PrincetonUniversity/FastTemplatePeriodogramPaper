@@ -817,6 +817,120 @@ the template algorithm scales as $\bigO(H^3)$, and computational resources
 alone limit $H$ to reasonably small numbers $H\lesssim15$ (see Figure \ref{fig:timingnharm}).
 
 
+\subsection{Choosing the harmonic order \texorpdfstring{$H$}{H}}\label{sec:choiceH}
+
+The harmonic order $H$ is a free parameter of the algorithm.  Two
+considerations bound it in practice:  (i) the $L^2$ fidelity of the
+$H$-truncated Fourier series as an approximation of the true template
+shape, and (ii) the numerical precision of the polynomial-rooting
+step at large $H$.
+
+To quantify (i) for representative fixed-shape signals, we evaluated
+the cumulative explained-variance fraction
+$F(H) = \sum_{n=1}^H (c_n^2 + s_n^2) / \sum_{n=1}^{\infty} (c_n^2 + s_n^2)$
+for five canonical analytic templates: an asymmetric exponential
+RR\,Lyrae ab pulse (fast rise, slow decline); a skewed sinusoidal
+RR\,Lyrae c profile; a trapezoidal planet transit with linear
+ingress/egress; a detached eclipsing binary built from two such
+trapezoidal eclipses; and a Doppler-beaming$\;+\;$ellipsoidal-modulation
+profile (exactly two-harmonic by construction).  Table~\ref{tab:hvsaccuracy}
+lists the smallest $H$ that reaches each of the
+$F = 0.90, 0.95, 0.99$ thresholds, and Figure~\ref{fig:hvsaccuracy}(a)
+shows the full $F(H)$ curves.
+
+\begin{table}
+\centering
+\caption{\label{tab:hvsaccuracy}
+The minimum harmonic order $H_{\min}(F)$ at which the $H$-truncated
+Fourier expansion of each canonical template captures the listed
+fraction $F$ of its total $L^2$ energy.  The right-hand columns
+report the empirical period-recovery rate at peak-to-peak SNR$\,=\,7$
+on 30 independent synthetic light curves with
+$N_{\rm obs}=100$ irregular samples per trial, comparing the Fast
+Template Periodogram at $H = H_{\min}(F{=}0.95)$ with the
+single-harmonic Lomb--Scargle-equivalent (FTP at $H{=}1$).
+Tabulated values come from the analytic Fourier expansions
+described in Section~\ref{sec:choiceH} and from the open-source
+reproduction script in the paper repository.}
+\input{scripts/h_vs_accuracy/results/table_h_vs_accuracy.tex}
+\end{table}
+
+The five templates span an order of magnitude in their harmonic
+requirements.  At the low end, the ellipsoidal$\;+\;$beaming profile is
+exactly band-limited at $H = 2$; the skewed-sinusoid RR\,Lyrae c
+reaches $99\%$ at $H = 3$.  The asymmetric-pulse RR\,Lyrae ab
+profile reaches $99\%$ at $H = 8$.  At the high end, the trapezoidal
+transit and detached-EB templates have second-derivative
+discontinuities at their ingress/egress corners, which gives a
+$\sim 1/n^2$ tail in the Fourier coefficients; both require
+$H \approx 12$ for $95\%$ fidelity and $H \approx 21$ for $99\%$.
+For applications where the underlying signal has sharper features
+than these analytic templates (e.g. true limb-darkened transits with
+fast cadence), the $99\%$ values may need to be revised upward.
+
+The practical consequence for period detection is shown in
+Figure~\ref{fig:hvsaccuracy}(b), which reports the period-recovery
+rate of FTP and of the LS-equivalent (FTP at $H{=}1$, i.e. a
+single-harmonic sinusoidal template) on synthetic noisy light
+curves.  Each light curve consists of $N_{\rm obs} = 100$ samples
+drawn uniformly from a $T_{\rm obs} = 100$\,day window with
+independent Gaussian noise scaled to the indicated peak-to-peak
+SNR; each periodogram is evaluated on the frequency window
+$[0.01, 5]$~cyc\,day$^{-1}$ at $10$ samples per peak, and the
+period is declared recovered when
+$|f_{\rm peak} - f_{\rm true}|/f_{\rm true} < 5\times 10^{-3}$.
+Thirty independent trials are run per (template, SNR) cell.
+For the smooth, near-sinusoidal RR\,Lyrae profiles the two
+estimators agree at all SNRs: a single-harmonic template suffices.
+For the three non-sinusoidal templates (transit, EB,
+ellipsoidal$\;+\;$beaming), FTP at $H = H_{95\%}$ recovers the
+period in $\geq 29/30$ trials at every SNR tested, while the
+LS-equivalent fails completely for EB and
+ellipsoidal$\;+\;$beaming ($0/30$ recoveries at all SNRs) and only
+partially for the transit template ($4/30$, $14/30$, and $17/30$
+at SNR$\,=\,3$, $7$, $15$ respectively).  This is the regime in
+which the $H$-truncation matters: harmonics beyond the first are
+required to match the underlying signal shape.
+
+For the numerical-precision consideration (ii), we have measured the
+maximum periodogram error of the implementation in this paper against
+a brute-force evaluation that explicitly maximises $V(\theta,\omega)$
+on a dense $\theta_2$ grid with local refinement.  Across
+$H \in \{1, 2, 3, 5, 7\}$, five random data realisations, and 200 trial
+frequencies, the maximum absolute error in $P(\omega)$ is below
+$10^{-7}$.\footnote{Issue \#33 of the FTP repository at
+\url{https://github.com/PrincetonUniversity/FastTemplatePeriodogram/issues/33}
+documents the test methodology and the precision floor of
+\texttt{numpy.polynomial.polyroots} as used by the implementation.}
+This is well below any astrophysically relevant amplitude threshold,
+so polynomial-rooting error does not limit FTP at the values of $H$
+considered in Table~\ref{tab:hvsaccuracy}.
+
+\begin{figure*}
+\centering
+\includegraphics[width=\textwidth]{plots/h_vs_accuracy.pdf}
+\caption{\label{fig:hvsaccuracy}
+(a) Cumulative $L^2$ explained-variance fraction $F(H)$ of the
+$H$-truncated Fourier series as an approximation of each canonical
+template.  Horizontal dotted guides mark $F = 0.90, 0.95, 0.99$.
+Detached EB and Planet transit have visually overlapping curves
+(both driven by sharp ingress/egress discontinuities); the dashed
+green line distinguishes the EB.
+(b) Empirical period-recovery rate as a function of peak-to-peak
+signal-to-noise ratio for sparse $N_{\rm obs} = 100$ synthetic
+light curves (30 trials per cell), comparing FTP at
+$H = H_{95\%}$ (solid) with the Lomb--Scargle-equivalent FTP at
+$H{=}1$ (dotted) for the same five canonical templates.  FTP at
+the per-template $H_{95\%}$ recovers the period in $\geq 96\%$ of
+trials across the SNR range.  The LS-equivalent agrees with FTP
+for the smooth RR\,Lyrae profiles (overlapping solid lines), fails
+completely for the EB and ellipsoidal$\;+\;$beaming templates
+(flat dotted lines at zero), and recovers only a fraction of
+trial transits (red dotted line, climbing from $\sim\!\!13\%$ at
+SNR$\,=\,3$ to $\sim\!\!57\%$ at SNR$\,=\,15$).}
+\end{figure*}
+
+
 %\subsubsection{Computational considerations of multi-band extensions}
 %Multi-band extensions generally require more computational
 %time than the single band case. For the shared-phase multi-band periodogram,
