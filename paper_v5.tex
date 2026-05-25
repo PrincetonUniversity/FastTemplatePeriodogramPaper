@@ -114,6 +114,7 @@ G.~\'A Bakos\altaffilmark{3,}\altaffilmark{4}}
     the non-equispaced fast Fourier transform. We show that our method, which uses truncated Fourier series to approximate templates,
     is an order of magnitude faster than existing algorithms for small problems ($N\lesssim 10$ observations) and
     2 orders of magnitude faster for long base-line time series with $N_{\rm obs} \gtrsim 10^4$ observations.
+    Signals with very sharp features (e.g.\ limb-darkened transits with brief ingress, sharp eclipses) require moderate-to-high harmonic orders ($H\gtrsim 20$) to be reproduced at the $99\%$ $L^2$ level (Table~\ref{tab:hvsaccuracy}); for such signals, transit-tailored methods such as the Box Least-Squares periodogram may be more efficient.
     An open-source implementation of the fast template periodogram is freely available online.\footnote{\url{https://github.com/PrincetonUniversity/FastTemplatePeriodogram}}
 \end{abstract}
 
@@ -846,6 +847,29 @@ For a fixed number of harmonics $H$, the template periodogram scales as
 $\bigO(N_f\log N_f)$. However, for a constant number of trial frequencies $N_f$,
 the template algorithm scales as $\bigO(H^3)$, and computational resources
 alone limit $H$ to reasonably small numbers $H\lesssim15$ (see Figure \ref{fig:timingnharm}).
+
+This practical ceiling has a direct bearing on the algorithm's scope of
+applicability for box-like signals such as exoplanetary transits and
+detached eclipsing binaries.  As we calibrate in
+Section~\ref{sec:choiceH}, the canonical analytic trapezoidal-transit and
+detached-EB templates considered here have second-derivative
+discontinuities at their ingress/egress corners, which produce a
+$\sim 1/n^2$ tail in the Fourier coefficients and require
+$H \approx 12$ to reach $95\%$ $L^2$ fidelity and $H \approx 21$ to
+reach $99\%$ (Table~\ref{tab:hvsaccuracy}).  FTP therefore \emph{can}
+handle transit- and eclipse-shaped signals, but at the upper end of
+computationally tractable $H$ values, and at a cost that grows as
+$H^3 N_f$.  Real limb-darkened transits are smoother than the
+trapezoidal idealisation---they have finite, gently-curved
+ingress/egress and consequently Fourier coefficients that decay
+faster than the trapezoid's $1/n^2$ tail---so the $H$ requirements
+in practice may be lower than Table~\ref{tab:hvsaccuracy} suggests
+for a pathological trapezoid.  Nevertheless, for surveys targeting
+genuinely box-shaped signals with very sharp ingress/egress
+(e.g.\ short-cadence shallow transits or short-duration eclipses),
+transit-tailored methods such as the Box Least-Squares periodogram
+\citep[BLS,][]{Kovacs_2002} are likely to be a more efficient choice
+than FTP.
 
 
 \subsection{Choosing the harmonic order \texorpdfstring{$H$}{H}}\label{sec:choiceH}
