@@ -14,6 +14,8 @@ Run from the repo root with
 
 Addresses reviewer comments:
 - JH.31/L.6: ensure proper minus glyph in the d^{-1} unit on the freq axis.
+- JVP.5(b): label the FTP curve "Fast Template Method" in the periodogram
+  legend so the black curve is identified alongside the MHLS / BLS overlays.
 """
 from __future__ import annotations
 
@@ -169,7 +171,8 @@ def main() -> None:
                 label="Box Least Squares",
             )
 
-        ax_pg.plot(f, p, color=COL_FTP, lw=0.6, zorder=4)
+        ax_pg.plot(f, p, color=COL_FTP, lw=0.6, zorder=4,
+                   label="Fast Template Method")
 
         # True-frequency guide (dotted)
         ax_pg.axvline(
@@ -189,11 +192,10 @@ def main() -> None:
         else:
             ax_pg.set_xticklabels([])
 
-        # Legend: only on the top row of each color, kept small.
-        if H == 2:
-            ax_pg.legend(loc="upper right", borderaxespad=0.3,
-                         handlelength=1.5)
-        if H == 10:
+        # Legend: top row introduces FTP, H=2 adds MHLS, H=10 adds BLS
+        # (per JVP.5(b): "Fast Template Method" should be named, in black,
+        # alongside the other algorithm labels).
+        if H in (1, 2, 10):
             ax_pg.legend(loc="upper right", borderaxespad=0.3,
                          handlelength=1.5)
 

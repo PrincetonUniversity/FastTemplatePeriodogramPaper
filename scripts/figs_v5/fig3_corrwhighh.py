@@ -8,9 +8,12 @@ Following the task spec, the x-axis is the H=10 result (high-H
 "reference") and the y-axis is the lower H=h result.  Each panel
 annotates Pearson R for that pair.
 
-Reviewer comment addressed: JH.30 -- we count and tabulate
-realizations where the low-H peak exceeds the H=10 peak, and document
-the empirical fraction in README.md.
+Reviewer comments addressed:
+- JH.30: we count and tabulate realizations where the low-H peak exceeds
+  the H=10 peak, and document the empirical fraction in README.md.
+- JVP.7: scatter points are color-coded by whether both the H=10
+  reference and the per-panel H=h estimator recovered the injected
+  frequency to within RECOVERY_TOL. Per-panel counts annotated.
 
 Run with
 
@@ -29,6 +32,8 @@ import matplotlib.pyplot as plt
 from common import (
     COL_DIAG,
     COL_FTP,
+    COL_MISS,
+    RECOVERY_TOL,
     autofrequency,
     make_template,
     pearson_r,
@@ -43,7 +48,13 @@ H_LIST = (1, 2, 5, 9)
 
 
 def _single_realization(sub_seed: int):
-    """Compute peak FTP power for H in H_LIST + H_REF for one realization."""
+    """Compute peak FTP power + argmax frequency for H in H_LIST+H_REF.
+
+    Returns ``(peaks, f_argmax, true_freq)`` where ``peaks`` and
+    ``f_argmax`` are dicts keyed by H. ``true_freq`` is the injected
+    frequency for this realization. (Tracking ``f_argmax`` lets us
+    color-code Fig 3 by true-frequency recovery; JVP.7.)
+    """
     from ftperiodogram.modeler import FastTemplatePeriodogram
 
     rng = np.random.default_rng(sub_seed)
@@ -61,12 +72,15 @@ def _single_realization(sub_seed: int):
     freq = autofrequency(t, samples_per_peak=5, f_min=0.5, f_max=15.0)
 
     peaks = {}
+    f_argmax = {}
     for H in (*H_LIST, H_REF):
         modeler = FastTemplatePeriodogram(template=make_template(H))
         modeler.fit(t, y, dy)
         p = modeler.power(freq, save_best_model=False)
-        peaks[H] = float(p.max())
-    return peaks
+        i = int(np.argmax(p))
+        peaks[H] = float(p[i])
+        f_argmax[H] = float(freq[i])
+    return peaks, f_argmax, true_freq
 
 
 def run_realizations(n_realizations: int, seed: int = 20260525, n_workers: int = 0):
@@ -85,10 +99,15 @@ def run_realizations(n_realizations: int, seed: int = 20260525, n_workers: int =
         results = pool.imap(_single_realization, [int(s) for s in sub_seeds])
 
     peaks = {H: np.zeros(n_realizations) for H in (*H_LIST, H_REF)}
+    f_argmax = {H: np.zeros(n_realizations) for H in (*H_LIST, H_REF)}
+    f_true = np.zeros(n_realizations)
     try:
         for i, row in enumerate(results):
+            p_row, f_row, tf = row
             for H in (*H_LIST, H_REF):
-                peaks[H][i] = row[H]
+                peaks[H][i] = p_row[H]
+                f_argmax[H][i] = f_row[H]
+            f_true[i] = tf
             if (i + 1) % 25 == 0 or i + 1 == n_realizations:
                 print(f"  realization {i+1}/{n_realizations} "
                       f"P10={peaks[H_REF][i]:.3f}  P5={peaks[5][i]:.3f}")
@@ -97,7 +116,7 @@ def run_realizations(n_realizations: int, seed: int = 20260525, n_workers: int =
             pool.close()
             pool.join()
 
-    return peaks
+    return peaks, f_argmax, f_true
 
 
 def main() -> None:
@@ -109,7 +128,8 @@ def main() -> None:
     setup_mpl()
 
     print(f"running {args.n_realizations} realizations...")
-    peaks = run_realizations(args.n_realizations, n_workers=args.n_workers)
+    peaks, f_argmax, f_true = run_realizations(
+        args.n_realizations, n_workers=args.n_workers)
     p10 = peaks[H_REF]
 
     print()
@@ -125,11 +145,23 @@ def main() -> None:
               f"({100.0*n_above/args.n_realizations:.1f}%)  "
               f"meaningful (> 0.001 above): {n_above_meaningful}")
 
+    # JVP.7: true-frequency recovery per H
+    ok10 = np.abs(f_argmax[H_REF] - f_true) / f_true < RECOVERY_TOL
+    ok_h = {H: np.abs(f_argmax[H] - f_true) / f_true < RECOVERY_TOL
+            for H in H_LIST}
+    print()
+    print(f"JVP.7 summary (true-freq recovery, |df/f| < {RECOVERY_TOL}):")
+    print(f"  H=10 (reference): {int(ok10.sum())}/{args.n_realizations}")
+    for H in H_LIST:
+        both = ok10 & ok_h[H]
+        print(f"  H={H:>2d}: {int(ok_h[H].sum())}/{args.n_realizations}  "
+              f"(both H={H} and H=10: {int(both.sum())})")
+
     # ---------------------------------------------------------------
     # Plot
     # ---------------------------------------------------------------
     fig, axes = plt.subplots(
-        1, len(H_LIST), figsize=(2.6 * len(H_LIST) + 0.3, 2.7),
+        1, len(H_LIST), figsize=(2.6 * len(H_LIST) + 0.3, 2.9),
         sharex=True, sharey=True,
         gridspec_kw=dict(wspace=0.15),
     )
@@ -137,9 +169,15 @@ def main() -> None:
     for ax, H in zip(axes, H_LIST):
         ph = peaks[H]
         R = pearson_r(p10, ph)
+        both = ok10 & ok_h[H]
+        miss = ~both
+
         ax.plot([0, 1], [0, 1], color=COL_DIAG, ls="--", lw=0.7, zorder=1)
-        ax.scatter(p10, ph, s=5, color=COL_FTP, alpha=0.85, zorder=3,
-                   edgecolors="none")
+        ax.scatter(p10[both], ph[both], s=5, color=COL_FTP, alpha=0.85,
+                   zorder=3, edgecolors="none")
+        if miss.any():
+            ax.scatter(p10[miss], ph[miss], s=16, facecolor="none",
+                       edgecolors=COL_MISS, linewidth=0.7, zorder=4)
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         ax.set_aspect("equal")
@@ -148,9 +186,10 @@ def main() -> None:
         ax.set_xlabel(r"$P_{\mathrm{FTP}}(\omega\,|\,H=10)$")
         ax.set_title(rf"$H = {H}$", fontsize=10)
         ax.annotate(
-            f"$R = {R:.3f}$",
+            f"$R = {R:.3f}$\n"
+            f"both recover: {int(both.sum())}/{args.n_realizations}",
             xy=(0.05, 0.95), xycoords="axes fraction",
-            ha="left", va="top", fontsize=9,
+            ha="left", va="top", fontsize=8,
         )
 
     axes[0].set_ylabel(r"$P_{\mathrm{FTP}}(\omega\,|\,H=h)$")

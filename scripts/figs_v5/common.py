@@ -28,6 +28,12 @@ COL_BLS = "#8a4fbf"        # muted purple (Box Least Squares)
 COL_DIAG = "#888888"       # diagonal guide in scatter plots
 COL_TRUEF = "#000000"      # true-frequency dotted guide
 COL_DATA = "#a82a2a"       # lightcurve data points
+COL_MISS = "#c8442a"       # JVP.7: realization where >=1 algo missed true_freq
+
+# JVP.7: fractional tolerance for "did the algorithm recover the true freq"
+# Set to 2x the autofrequency grid spacing for our default simulator settings
+# (df/f ~ 0.005 at f_true ~ 3.7), so adjacent-bin peaks still count as a hit.
+RECOVERY_TOL = 0.01
 
 # Linewidths and marker sizes (tuned to look right on a single-column figure)
 LW_THIN = 0.7

@@ -7,9 +7,15 @@ y-axis). Pearson R is annotated. The expected pattern is points on or
 below the diagonal: the slow fitter occasionally finds only a local
 chi^2 minimum and reports a smaller P value than the FTP.
 
-Reviewer comment addressed: JH.29 -- we explicitly count and tabulate
-the (rare) realizations where P_slow > P_FTP and document the size of
-the excess in scripts/figs_v5/README.md.
+Reviewer comments addressed:
+- JH.29: we explicitly count and tabulate the (rare) realizations where
+  P_slow > P_FTP and document the size of the excess in
+  scripts/figs_v5/README.md.
+- JVP.7: scatter points are color-coded by whether *both* algorithms
+  recovered the injected frequency to within RECOVERY_TOL, with the
+  count annotated in-panel. This answers JVP's concern that two
+  algorithms with high Pearson R might just be agreeing on the wrong
+  answer.
 
 Run with
 
@@ -28,6 +34,8 @@ import matplotlib.pyplot as plt
 from common import (
     COL_DIAG,
     COL_FTP,
+    COL_MISS,
+    RECOVERY_TOL,
     autofrequency,
     make_template,
     pearson_r,
@@ -168,13 +176,37 @@ def main() -> None:
               f"realization, consistent with the caption's framing.")
 
     # ---------------------------------------------------------------
+    # JVP.7: classify each realization by true-frequency recovery
+    # ---------------------------------------------------------------
+    f_ftp = out["f_ftp"]
+    f_slow = out["f_slow"]
+    f_true = out["f_true"]
+    ftp_ok = np.abs(f_ftp - f_true) / f_true < RECOVERY_TOL
+    slow_ok = np.abs(f_slow - f_true) / f_true < RECOVERY_TOL
+    both_ok = ftp_ok & slow_ok
+    n_both = int(both_ok.sum())
+    n_total = both_ok.size
+    print(f"JVP.7: true-freq recovery (|df/f| < {RECOVERY_TOL}):  "
+          f"FTP {int(ftp_ok.sum())}/{n_total}, "
+          f"slow {int(slow_ok.sum())}/{n_total}, "
+          f"both {n_both}/{n_total}.")
+
+    # ---------------------------------------------------------------
     # Plot
     # ---------------------------------------------------------------
     fig, ax = plt.subplots(figsize=(4.2, 4.2))
     # diagonal
     ax.plot([0, 1], [0, 1], color=COL_DIAG, ls="--", lw=0.7, zorder=1)
-    ax.scatter(p_ftp, p_slow, s=6, color=COL_FTP, alpha=0.85, zorder=3,
-               edgecolors="none")
+    # both recovered: filled black
+    ax.scatter(p_ftp[both_ok], p_slow[both_ok], s=6, color=COL_FTP,
+               alpha=0.85, zorder=3, edgecolors="none",
+               label="both recover $f_{\\rm true}$")
+    # at least one missed: hollow red, more visually salient
+    miss = ~both_ok
+    if miss.any():
+        ax.scatter(p_ftp[miss], p_slow[miss], s=18, facecolor="none",
+                   edgecolors=COL_MISS, linewidth=0.8, zorder=4,
+                   label=r"$\geq 1$ misses $f_{\rm true}$")
 
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
@@ -184,10 +216,14 @@ def main() -> None:
     ax.set_xlabel(r"$P_{\mathrm{FTP}}(\omega\,|\,H=10)$")
     ax.set_ylabel(r"$P_{\mathrm{slow}}(\omega)$")
     ax.annotate(
-        f"$R = {R:.3f}$",
+        f"$R = {R:.3f}$\n"
+        f"both recover $f_{{\\rm true}}$: {n_both}/{n_total}",
         xy=(0.05, 0.95), xycoords="axes fraction",
-        ha="left", va="top", fontsize=10,
+        ha="left", va="top", fontsize=9,
     )
+    if miss.any():
+        ax.legend(loc="lower right", fontsize=8, borderaxespad=0.3,
+                  handlelength=1.0, scatterpoints=1)
 
     pdf, png = save_fig(fig, "correlation_with_nonlinopt")
     print(f"wrote {pdf}\nwrote {png}")
