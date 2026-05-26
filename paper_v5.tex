@@ -386,7 +386,7 @@ the completeness of the final sample by applying template fits to a larger numbe
 which would require either more computational resources, more time, or, ideally, a more efficient
 template fitting procedure.
 
-We note that the fast template periodogram, like the LS periodogram, assumes that the reported
+We note that the fast template periodogram (FTP), like the LS periodogram, assumes that the reported
 photometric uncertainties $\sigma_i$ are strictly positive and fully describe the noise.
 In practice, real photometric data frequently exhibit additional intrinsic scatter (or ``equation error'')
 beyond the reported $\sigma_i$, so that the model--data residual variance exceeds $\sigma_i^2$.
@@ -423,7 +423,7 @@ We define a template $\mathbf{M}$
 restrict our discussion to sufficiently smooth templates such that
 $\mathbf{M}$ can be adequately described by a truncated Fourier series
 
-\begin{equation}
+\begin{equation}\label{eq:templateFourier}
     \hat{\mathbf{M}}(\omega t|H) = \sum_{n=1}^H\left(c_n\cos{n\omega t} + s_n\sin{n\omega t}\right)
 \end{equation}
 
@@ -438,7 +438,7 @@ We now construct a periodogram for this template. The periodogram assumes
 that an observed time series $S = \{(t_i, y_i, \sigma_i)\}_{i=1}^N$ can be modeled
 by a scaled, transposed template that repeats with period $2\pi / \omega$, i.e.
 
-\begin{equation}
+\begin{equation}\label{eq:templateModel}
 y_i \approx \hat{y}(\omega t_i;\theta, \mathbf{M}) = \theta_1\mathbf{M}(\omega t_i - \theta_2) + \theta_3,
 \end{equation}
 
@@ -447,7 +447,7 @@ y_i \approx \hat{y}(\omega t_i;\theta, \mathbf{M}) = \theta_1\mathbf{M}(\omega t
 The optimal parameters are the location of a local minimum of the (weighted) sum of
 squared residuals,
 
-\begin{equation}
+\begin{equation}\label{eq:Vdef}
     V(\theta, S) \equiv \sum_i w_i (y_i - \hat{y}(\omega t_i;\theta) )^2,
 \end{equation}
 
@@ -472,272 +472,128 @@ is zero, the periodogram (as defined in Equation \ref{eq:lsp}) is undefined for 
 consider the case where $\sigma_i = 0$ for some observations $i$ and $\sigma_j > 0$ for
 some observations $j$.
 
-We can derive a system of equations for $\theta_{\rm opt}$ from the condition given
-in Equation \ref{eq:chi2conds}. The explicit condition that must be met for each parameter $\theta_j$ is simplified below,
-using
+We can derive a system of equations for $\theta_{\rm opt}$ from
+Equation~\ref{eq:chi2conds}.  The fast template periodogram reduces
+this three-parameter non-linear minimisation to a polynomial
+root-finding problem in three steps; the qualitative outline is given
+here, with the explicit algebra collected in
+Appendix~\ref{app:fullderivation}.
 
-\begin{equation}
-\hat{y}_i = \hat{y}(\omega t_i; \theta)
+\medskip\noindent\textbf{Step 1: closed form for $(\theta_1, \theta_3)$ at fixed $\theta_2$.}
+The model $\hat{y}$ is linear in $\theta_1$ and $\theta_3$ once the
+phase shift $\theta_2$ is held fixed, so the conditions
+$\partial V/\partial\theta_1 = \partial V/\partial\theta_3 = 0$
+form a $2\!\times\!2$ linear system with closed-form solution
+(Appendix~\ref{app:fullderivation}, Equation~\ref{eq:appthetaopt}):
+\begin{equation}\label{eq:thetaoptbody}
+\theta_1 = \frac{YM}{MM},
+\qquad
+\theta_3 = \bar{y} - \Mbar\!\left(\frac{YM}{MM}\right),
 \end{equation}
-
-\noindent and
-
-\begin{equation}
-\partial_j\hat{y}_i = \left.\frac{\partial \hat{y}(\omega t;\theta)}{\partial \theta_j}\right|_{t = t_i}
+where the weighted statistics
+\begin{align}\label{eq:weightedstats}
+\Mbar &\equiv \savg{\Mshft}, &
+\bar{y} &\equiv \savg{y}, \nonumber\\
+MM &\equiv \svar(\Mshft), &
+YM &\equiv \scov(\Mshft, y), \nonumber\\
+YY &\equiv \svar(y)
+\end{align}
+are all implicit functions of $\theta_2$ through the phase-shifted
+template $\Mshft \equiv \mathbf{M}(\omega t - \theta_2)$, and the
+weighted-average operator $\savg{\cdot}$, covariance $\scov$, and
+variance $\svar$ are defined in Appendix~\ref{app:fullderivation}.
+Substituting Equation~\ref{eq:thetaoptbody} back into $V$ and using
+$V_0 = YY$, the periodogram
+$P(\omega) \equiv 1 - V/V_0$ takes the compact form
+\begin{equation}\label{eq:Pofomega}
+    P(\omega) = \frac{[YM(\theta_2)]^2}{YY \cdot MM(\theta_2)}.
 \end{equation}
+The intermediate algebra is given in
+Appendix~\ref{app:fullderivation}.
 
-\noindent for brevity:
+\medskip\noindent\textbf{Step 2: reduce to a one-dimensional optimisation over $\theta_2$.}
+Maximising Equation~\ref{eq:Pofomega} with respect to the remaining
+non-linear parameter $\theta_2$ gives
+\begin{align}\label{eq:theta2cond}
+\partial_{\theta_2}P = 0 \;
+&=\; \frac{YM}{YY\cdot MM}\!\left(2\partial_{\theta_2}(YM)
+       - \frac{YM}{MM}\partial_{\theta_2}(MM)\right) \nonumber \\
+&=\; 2\,MM\,\partial_{\theta_2}(YM) - YM\,\partial_{\theta_2}(MM).
+\end{align}
+This transcendental condition on the single parameter $\theta_2$ is
+what existing non-linear template fitters must solve numerically at
+every trial frequency.  Satisfying Equation~\ref{eq:theta2cond} is
+necessary but not \emph{sufficient}: the value of $P(\omega)$ must be
+evaluated at each root, and the global maximum selected from this set.
 
-\begin{equation}\label{eq:simpconds}
-\begin{split}
-0 &= \left.\frac{\partial V}{\partial\theta_j}\right|_{\theta=\theta_{\rm opt}}\\
-  &= -2\sum_i w_i\left(y_i - \hat{y}_i \right)(\partial_j\hat{y})_i \\
-\sum_i w_iy_i(\partial_j\hat{y})_i&= \sum_i w_i \hat{y}_i(\partial_j\hat{y})_i.
-\end{split}
+\medskip\noindent\textbf{Step 3: recast as polynomial root-finding.}
+The crux of the FTP is the change of variable
+$\eith \equiv e^{i\theta_2}$ together with the rescaling
+$YM' \equiv \eith^H\,YM$ and $MM' \equiv \eith^{2H}\,MM$.  Because the
+phase-shifted template (Equation~\ref{eq:templateFourier}) enters $YM$
+and $MM$ only through factors of $e^{\pm in\theta_2}$ with $n \le H$,
+the rescaled quantities $YM'$ and $MM'$ are polynomials in $\eith$ (of
+degree $2H$ and $4H$, respectively;
+Appendix~\ref{app:fullderivation}).  A short calculation
+(Appendix~\ref{app:fullderivation}) shows that the non-linear
+condition Equation~\ref{eq:theta2cond} is equivalent to
+\begin{equation}\label{eq:finalpoly}
+    0 \;=\; 2\,MM'\,\partial(YM') \;-\; YM'\,\partial(MM'),
 \end{equation}
-
-The above is a general result that extends to all least squares periodograms.
-To simplify derivations, we adopt the following notation:
-
-\begin{eqnarray}
-\savg{X} &\equiv& \sum_i w_i X_i\\
-\savg{XY} &\equiv& \sum_i w_i X_iY_i\\
-\scov(X, Y) &\equiv& \savg{XY} - \savg{X}\savg{Y}\\
-\svar(X) &\equiv& \scov(X, X)
-\end{eqnarray}
-
-In addition, the transposed template $\Mshft = \mathbf{M}(\omega t_i - \theta_2)$ can be expressed
-as
-
+a polynomial of degree $6H-1$ in $\eith$.  The coefficients of this
+polynomial are linear combinations of the weighted trigonometric sums
 \begin{align}
-\Mshft(\omega t) &= \sum_n c_n\cos n\left(\omega t - \theta_2 \right) \\
-                &\qquad + s_n\sin{n\left(\omega t - \theta_2 \right)}\\
-                &= \sum_n\left(c_n\cos{n\theta_2}-s_n\sin{n \theta_2}\right)\cos{n\omega t} + \\
-                &\qquad \left(s_n\cos{n\theta_2} + c_n\sin{n \theta_2}\right)\sin{n\omega t} \\
-                &= \sum_n\left(\alpha_n e^{in\theta_2} + \alpha_n^{*} e^{-in\theta_2}\right)\cos{n\omega t} + \\
-                &\qquad \left(-i\left[\alpha_n e^{in\theta_2} - \alpha_n^{*} e^{-in\theta_2}\right]\right)\sin{n\omega t} \\
-                &= \sum_n\left(\alpha_n \eith^n + \alpha_n^{*} \eith^{-n}\right)\cos{n\omega t} + \\
-                &\qquad \left(-i\left[\alpha_n \eith^n - \alpha_n^{*} \eith^{-n}\right]\right)\sin{n\omega t} \\
-                &= \sum_nA_n(\eith)\cos{n\omega t} + B_n(\eith)\sin{n\omega t}
+CC_{nm} &\equiv \scov(\cos{n\omega t},\cos{m\omega t}),\label{eq:CCdef}\\
+CS_{nm} &\equiv \scov(\cos{n\omega t},\sin{m\omega t}),\label{eq:CSdef}\\
+SS_{nm} &\equiv \scov(\sin{n\omega t},\sin{m\omega t}),\label{eq:SSdef}\\
+YC_n &\equiv \savg{(y - \bar{y})\cos{n\omega t}},\label{eq:YCdef}\\
+YS_n &\equiv \savg{(y - \bar{y})\sin{n\omega t}}\label{eq:YSdef},
 \end{align}
+each of which can be evaluated at \emph{all} trial frequencies
+$\omega$ simultaneously in $\bigO(H N_f \log H N_f)$ time using the
+non-equispaced fast Fourier transform.  The explicit assembly of the
+polynomial coefficients from these sums---and the algebraic identity
+that converts Equation~\ref{eq:theta2cond} into
+Equation~\ref{eq:finalpoly}---is given in
+Appendix~\ref{app:fullderivation}
+(Equations~\ref{eq:appMM}--\ref{eq:appfinalpoly}).
 
-where $\alpha_n = (c_n + is_n)/2$, and $\eith\equiv e^{i\theta_2}$ is a convenient change of variable.
+We solve for the roots of Equation~\ref{eq:finalpoly} using the
+\texttt{numpy.polynomial.polyroots} function, which returns the
+eigenvalues of the polynomial's companion matrix.  Multiplying through
+by powers of $\eith$ in deriving Equation~\ref{eq:finalpoly}
+introduces spurious roots, and $\eith$ must lie on the unit circle
+($|\eith|=1$ for real $\theta_2$).  We therefore scale each root by
+its modulus to enforce the unit-circle constraint; iterative schemes
+such as Newton's method could be used for greater robustness, but the
+maximum periodogram error of the present implementation is below
+$10^{-7}$ across the $H$ values tested
+(Section~\ref{sec:choiceH}).
 
-We also define the following terms:
-
-\begin{align}
-\YMhat &= \savg{y\Mshft}\\
-\MMhat &= \savg{\Mshft^2}\\
-\Mbar &= \savg{\Mshft}\\
-MM &= \svar(\Mshft) = \MMhat - \Mbar^2\\
-YM &= \scov(\Mshft, y) = \YMhat - \bar{y}\Mbar
-\end{align}
-
-For a given phase shift $\theta_2$, the optimal amplitude and
-offset are obtained from requiring the partial derivatives of the
-sum of squared residuals, $V$, to be zero.
-
-Namely, we obtain that
-\begin{align}
-0 = \frac{\partial V}{\partial\theta_1} &= 2\sum_iw_i(y_i - \hat{y}_i)\left(-\frac{\partial\hat{y}}{\partial\theta_1}\right)_i\\
-    &= \sum_iw_i(y_i - \theta_1\Mshft - \theta_3)\Mshft\\
-    &= \YMhat - \theta_1 \MMhat - \theta_3 \Mbar
-\end{align}
-
-and
-\begin{align}
-0 = \frac{\partial V}{\partial\theta_3} &= 2\sum_iw_i(y_i - \hat{y}_i)\left(-\frac{\partial\hat{y}}{\partial\theta_3}\right)_i\\
-    &= \sum_iw_i(y_i - \theta_1\Mshft - \theta_3)\\
-    &= \bar{y} - \theta_1 \Mbar - \theta_3
-\end{align}
-
-This system of equations can then be rewritten as
-
-\begin{equation}
-\begin{pmatrix} \MMhat & \Mbar \\ \Mbar & 1 \end{pmatrix}
-\begin{pmatrix} \theta_1 \\ \theta_3 \end{pmatrix}
-=
-\begin{pmatrix} \YMhat \\ \bar{y}\end{pmatrix}
-\end{equation}
-
-which reduces to
-
-\begin{align}
-\begin{pmatrix} \theta_1 \\ \theta_3 \end{pmatrix}
-&=
-\frac{1}{\MMhat - \Mbar^2}
-\begin{pmatrix} 1 & -\Mbar \\ -\Mbar & \MMhat \end{pmatrix}
-\begin{pmatrix} \YMhat \\ \bar{y}\end{pmatrix}\\
-&=
-\frac{1}{\MMhat - \Mbar^2}
-\begin{pmatrix} \YMhat - \bar{y}\Mbar \\ \MMhat\bar{y} - \YMhat\Mbar \end{pmatrix}
-\end{align}
-
-Letting $MM = \MMhat - \Mbar^2$ and $YM = \YMhat - \bar{y}\Mbar$, we have
-\begin{equation}
-\begin{pmatrix} \theta_1 \\ \theta_3 \end{pmatrix}
-=
-\begin{pmatrix} YM / MM \\ \bar{y} - \Mbar (YM / MM)\end{pmatrix}
-\end{equation}
-
-This means we can rewrite the model $\hat{y} = \theta_1\Mshft + \theta_3$ as
-
-\begin{equation}
-\hat{y}_i = \bar{y} + \left(\frac{YM}{MM}\right)(M_i - \Mbar)
-\end{equation}
-
-To obtain an expression for the periodogram, $P = 1 - V / V_0$, we first compute $V$
-
-\begin{align}
-V &= \sum_i w_i (y_i - \hat{y}_i)^2 \\
-       &= \sum_i w_i (y_i^2 - 2y_i\hat{y}_i + \hat{y}_i^2)\\
-       %&= \sum_i w_i ((y_i - \bar{y})^2 + 2y_i(\bar{y} - \bar{y} - \left(\frac{YM}{MM}\right)(M_i - \Mbar)) - \bar{y}^2 + \bar{y}^2 \\
-       %&\qquad + 2\bar{y}\left(\frac{YM}{MM}\right)(M_i - \Mbar) + \left(\frac{YM}{MM}\right)^2(M_i^2 - 2M_i\Mbar + \Mbar^2)\\
-       &= YY - 2\frac{(YM)^2}{MM} + \frac{(YM)^2}{MM}\\
-       &= YY - \frac{(YM)^2}{MM}
-\end{align}
-
-Since, $V_0 = YY$, we have
-
-\begin{equation}
-P(\omega) = \frac{(YM)^2}{YY\cdot MM}
-\end{equation}
-
-We wish to maximize $P(\omega)$ with respect to the phase shift parameter $\theta_2$,
-
-\begin{align}
-\label{eq:theta2cond}
-\partial_{\theta_2}P = 0 &= \frac{YM}{YY\cdot MM}\left(2\partial_{\theta_2}(YM) - \frac{YM}{MM}\partial_{\theta_2}(MM)\right)\\
-                         &= 2MM\partial_{\theta_2}(YM) - YM\partial_{\theta_2}(MM).
-\end{align}
-
-The final expression is the non-linear condition that must be satisfied by the optimal
-phase shift parameter $\theta_2$. However, satisfying Equation \ref{eq:theta2cond}
-is not \emph{sufficient} to guarantee that $\theta_2$ is optimal. The value of the
-periodogram at each $\theta_2$ satisfying Equation \ref{eq:theta2cond} must be computed,
-and the globally optimal solution chosen from this set.
-
-We seek a more explicit form for Equation \ref{eq:theta2cond}. We
-derive expressions for $MM$ and $YM$, defining
-
-\begin{eqnarray}
-CC_{nm} &\equiv& \scov(\cos{n\omega t},\cos{m\omega t})\label{eq:CCdef}\\
-CS_{nm} &\equiv& \scov(\cos{n\omega t},\sin{m\omega t})\label{eq:CSdef}\\
-SS_{nm} &\equiv& \scov(\sin{n\omega t},\sin{m\omega t})\label{eq:SSdef}\\
-YC_n &\equiv& \savg{(y - \bar{y})\cos{n\omega t}}\label{eq:YCdef}\\
-YS_n &\equiv& \savg{(y - \bar{y})\sin{n\omega t}}\label{eq:YSdef},
-\end{eqnarray}
-
-\noindent all of which can be evaluated efficiently using the NFFT.
-
-The autocovariance of the template values $MM$, is given by
-
-\begin{align}
-MM &\equiv \sum_i w_i M_i^2 - \left(\sum_i w_i M_i\right)^2\\
-   &= \sum_i w_i \left(\sum_nA_n\cos{\omega n t_i} + B_n\sin{\omega n t_i}\right)^2\\
-   &\qquad - \left(\sum_nA_nC_n + B_nS_n\right)^2\\
-   &= \sum_{n,m} A_nA_mCC_{nm} \nonumber \\
-   &\qquad + (A_nB_mCS_{nm} + B_nA_m(CS^T)_{nm}) \nonumber \\
-   &\qquad + B_nB_mSS_{nm}\\
-   &= \sum_{n,m} A_nA_mCC_{nm} + 2A_nB_mCS_{nm} \nonumber\\
-   &\qquad + B_nB_mSS_{nm},
-\end{align}
-
-\noindent using
-
-\begin{equation}
-\sum_{n,m}A_nB_mCS_{nm} = \sum_{n,m} A_mB_n CS_{mn}.
-\end{equation}
-
-We also derive the products $A_nA_m$, $A_nB_m$, $B_nB_m$:
-
-
-\begin{align}
-\begin{split}
-A_nA_m &= \left(\alpha_n\eith^n + \alpha^{*}_n\eith^{-n}\right)\left(\alpha_m\eith^m + \alpha^{*}_m\eith^{-m}\right)\\
-       &= \alpha_n\alpha_m \eith^{n+m} + \alpha^{*}_n\alpha_m\eith^{m-n} \\
-       &\qquad + \alpha_n\alpha^{*}_m \eith^{n-m} + \alpha^{*}_n\alpha^{*}_m\eith^{-n-m)}
-\end{split}\\
-\begin{split}
-A_nB_m &= -i\left(\alpha_n\eith^n + \alpha^{*}_n\eith^{-n}\right)\left(\alpha_m\eith^m - \alpha^{*}_m\eith^{-m}\right)\\
-       &= -i\left\{\alpha_n\alpha_m \eith^{n+m} + \alpha^{*}_n\alpha_m\eith^{m-n} \right.\\
-       &\qquad \left. - \alpha_n\alpha^{*}_m \eith^{n-m} - \alpha^{*}_n\alpha^{*}_m\eith^{-n-m)}\right\}
-\end{split}\\
-\begin{split}
-B_nB_m &= -\left(\alpha_n\eith^n - \alpha^{*}_n\eith^{-n}\right)\left(\alpha_m\eith^m - \alpha^{*}_m\eith^{-m}\right)\\
-       &= -\left\{\alpha_n\alpha_m \eith^{n+m} - \alpha^{*}_n\alpha_m\eith^{m-n} \right.\\
-       &\qquad \left.- \alpha_n\alpha^{*}_m \eith^{n-m} + \alpha^{*}_n\alpha^{*}_m\eith^{-n-m}\right\}
-\end{split}
-\end{align}
-
-
-Now we have that
-
-\begin{align}
-\begin{split}
-MM_{nm} &= A_nA_mCC_{nm} + 2A_nB_mCS_{nm} + B_nB_mSS_{nm}\\
-        &= \alpha_n\alpha_m\CCt_{nm}\eith^{n+m} + 2\alpha_n\alpha^{*}_m\CSt_{nm}\eith^{n-m} \\
-        &\qquad + \alpha^{*}_n\alpha^{*}_m\SSt_{nm}\eith^{-(n+m)}
-\end{split}
-\end{align}
-
-where
-
-\begin{align}
-\CCt_{nm}  &= (CC_{nm} - SS_{nm}) - i\left(CS + CS^T\right)_{nm} \\
-\CSt_{nm}  &= (CC_{nm} + SS_{nm}) + i\left(CS - CS^T\right)_{nm}\\
-\SSt_{nm}  &= (CC_{nm} - SS_{nm}) + i\left(CS + CS^T\right)_{nm}
-\end{align}
-
-and for $YM$:
-
-\begin{align}
-\begin{split}
-YM_{k} &= A_kYC_k + B_kYS_k\\
-        &= \alpha_kYC_k\eith^k + \alpha_k^{*}YC_k\eith^{-k} \\
-        &\qquad - i\left(\alpha_kYS_k\eith^k - \alpha^{*}_kYS_k\eith^{-k}\right)\\
-        &= (YC_k - iYS_k)\alpha_k\eith^k + (YC_k + iYS_k)\alpha^{*}_k\eith^{-k}\\
-        &= \alpha_k\YCt_k \eith^k + \alpha^{*}_k\YCt_k^{*} \eith^{-k}.
-\end{split}
-\end{align}
-
-
-We also define $YM' = \eith^H YM$ and $MM' = \eith^{2H}MM$, both of which are polynomials in $\eith$. Their derivatives
-are
-
-\begin{align}
-\partial YM' &= H\eith^{H-1} YM + \eith^H \partial YM\\
-\partial MM' &= 2H\eith^{2H-1} MM + \eith^{2H}\partial MM.
-\end{align}
-
-A new polynomial condition can then be expressed in terms of $MM'$, $YM'$ and their derivatives.
-
-\begin{align}\label{eq:finalpoly}
-0 &= 2MM\partial(YM) - YM\partial(MM)\\
-  &= \eith^{3H+1}\left(2MM\partial(YM) - YM\partial(MM)\right)\\
-  &= 2\eith^{2H}MM\left(\eith^{H+1}\partial(YM)\right) \nonumber \\
-  &\qquad - \eith^HYM\left(\eith^{2H+1}\partial(MM)\right)\\
-  &= 2MM'\left(\eith\partial(YM') - H(YM')\right) \nonumber \\
-  &\qquad - YM'\left(\eith\partial(MM') - 2H(MM')\right)\\
-  &= \eith\left(2MM'\partial(YM') - YM'\partial(MM')\right) \nonumber \\
-  &\qquad- 2H\left(MM'YM' - YM'MM'\right)\\
-  &= 2MM'\partial(YM') - YM'\partial(MM')
-\end{align}
-
-The last step assumes that $\eith\ne 0$, which is a valid assumption since $\eith=e^{i\theta_2}$ lies on the
-unit circle for all real $\theta_2$.
-
-We solve for the zeros of the polynomial condition defined by Equation \ref{eq:finalpoly}
-using the \texttt{numpy.polynomial.polyroots} function, which solves for the eigenvalues
-of the polynomial companion matrix.
-
-Solving for the zeros of a polynomial given a set of coefficients is unstable in certain cases, since the
-coefficients are represented as floating point numbers with finite precision. Thus, we scale the roots
-by their modulus to ensure they lie on the unit circle. Alternatively, we could use iterative schemes
-such as Newton's method to improve the estimate of the roots more robustly, however this requires more computational power and
-the accuracy of the roots was not a problem for any of the cases the authors have tested.
-
-%%%%%%%%%%%%%%%%%%%%%%% TODO: FINISH
+\medskip\noindent\textbf{Summary of the algorithm.}
+We have derived an explicit, non-linear system of equations to solve
+for the optimal model parameters at each trial frequency.  Concretely,
+for each $\omega$ the FTP proceeds as follows:
+\begin{enumerate}
+\item Compute the weighted trigonometric sums of
+      Equations~\ref{eq:CCdef}--\ref{eq:YSdef} at all trial
+      frequencies $\omega$ using the NFFT.
+\item Assemble the coefficients of the degree-$(6H{-}1)$ polynomial
+      of Equation~\ref{eq:finalpoly} from the sums of step~1; the
+      closed-form assembly is given in
+      Appendix~\ref{app:fullderivation}
+      (Equations~\ref{eq:appMM}--\ref{eq:appYM}).
+\item Find all roots of this polynomial via
+      \texttt{numpy.polynomial.polyroots}, retaining only the roots
+      that lie on the unit circle $\eith = e^{i\theta_2}$.
+\item For each candidate $\theta_2$, evaluate the corresponding
+      linear-best-fit $(\theta_1, \theta_3)$ via
+      Equation~\ref{eq:thetaoptbody} and the periodogram $P(\omega)$
+      via Equation~\ref{eq:Pofomega}.
+\item Declare the largest $P(\omega)$ value the global optimum; the
+      corresponding $(\theta_1, \theta_2, \theta_3)$ are the best-fit
+      model parameters at that trial frequency.
+\end{enumerate}
 
 \subsection{Negative amplitude solutions}
 The model $\hat{y}= \theta_1\Mshft + \theta_0$ allows for $\theta_1 < 0$ solutions.
@@ -1012,8 +868,8 @@ SNR$\,=\,3$ to $\sim\!\!57\%$ at SNR$\,=\,15$).}
             The Box Least-Squares \citep{Kovacs_2002} periodogram is shown in the final plot.}
 \end{figure*}
 
-An open-source implementation of the template periodogram in Python is
-available.\footnote{\url{https://github.com/PrincetonUniversity/FastTemplatePeriodogram}}
+An open-source implementation of the Fast Template Periodogram (FTP)
+in Python is available.\footnote{\url{https://github.com/PrincetonUniversity/FastTemplatePeriodogram}}
 Polynomial algebra is performed using the \texttt{numpy.polynomial} module
 \citep{Scipy}. The \texttt{nfft} Python module,
 \footnote{\url{https://github.com/jakevdp/nfft}} which provides a Python
@@ -1296,6 +1152,191 @@ in large time-series datasets.
 \bibliography{refs}
 
 \begin{appendix}
+
+\section{Full derivation of the fast template periodogram}\label{app:fullderivation}
+
+This appendix gives the explicit algebra summarised in
+Section~\ref{sec:derivations}.  We present (i) the general form of
+the gradient conditions for a weighted-least-squares periodogram;
+(ii) the polynomial expansion of the phase-shifted template; (iii)
+the closed-form solution to the linear least-squares sub-problem at
+fixed phase shift $\theta_2$; (iv) the reduction of the residual sum
+of squares $V$ to the compact periodogram form of
+Equation~\ref{eq:Pofomega}; (v) the polynomial expansion of the
+weighted statistics $MM$ and $YM$ in terms of $\eith = e^{i\theta_2}$
+and the trigonometric sums of
+Equations~\ref{eq:CCdef}--\ref{eq:YSdef}; and (vi) the algebraic
+identity converting the non-linear condition
+Equation~\ref{eq:theta2cond} into the polynomial root-finding
+condition of Equation~\ref{eq:finalpoly}.
+
+\subsection{General form of the gradient conditions}
+\label{app:simpconds}
+
+The optimality condition Equation~\ref{eq:chi2conds} can be written
+explicitly for each parameter $\theta_j$ as follows.  Writing
+$\hat{y}_i = \hat{y}(\omega t_i; \theta)$ and
+$\partial_j\hat{y}_i = \left.\partial\hat{y}(\omega t;\theta)/\partial\theta_j\right|_{t=t_i}$,
+\begin{equation}\label{eq:appsimpconds}
+\begin{split}
+0 &= \left.\frac{\partial V}{\partial\theta_j}\right|_{\theta=\theta_{\rm opt}}\\
+  &= -2\sum_i w_i\left(y_i - \hat{y}_i \right)(\partial_j\hat{y})_i, \\
+\sum_i w_iy_i(\partial_j\hat{y})_i &= \sum_i w_i \hat{y}_i(\partial_j\hat{y})_i.
+\end{split}
+\end{equation}
+This is a general result that extends to all least-squares
+periodograms.  To simplify the derivations below we adopt the
+weighted-average notation
+\begin{eqnarray}
+\savg{X} &\equiv& \sum_i w_i X_i,\\
+\savg{XY} &\equiv& \sum_i w_i X_iY_i,\\
+\scov(X, Y) &\equiv& \savg{XY} - \savg{X}\savg{Y},\\
+\svar(X) &\equiv& \scov(X, X).
+\end{eqnarray}
+
+\subsection{Phase-shifted template expansion}
+\label{app:shifttemplate}
+
+The transposed template
+$\Mshft = \mathbf{M}(\omega t - \theta_2)$ can be expressed as
+\begin{align}
+\Mshft(\omega t) &= \sum_n c_n\cos n\left(\omega t - \theta_2 \right) + s_n\sin{n\left(\omega t - \theta_2 \right)} \nonumber\\
+                &= \sum_n\left(c_n\cos{n\theta_2}-s_n\sin{n \theta_2}\right)\cos{n\omega t} \nonumber \\
+                &\qquad + \left(s_n\cos{n\theta_2} + c_n\sin{n \theta_2}\right)\sin{n\omega t} \nonumber\\
+                &= \sum_n\left(\alpha_n \eith^n + \alpha_n^{*} \eith^{-n}\right)\cos{n\omega t} \nonumber \\
+                &\qquad - i\left(\alpha_n \eith^n - \alpha_n^{*} \eith^{-n}\right)\sin{n\omega t} \nonumber\\
+                &= \sum_n A_n(\eith)\cos{n\omega t} + B_n(\eith)\sin{n\omega t},
+\end{align}
+where $\alpha_n = (c_n + is_n)/2$ and $\eith\equiv e^{i\theta_2}$.
+We also define the weighted statistics
+\begin{align}
+\YMhat &\equiv \savg{y\Mshft}, &
+\MMhat &\equiv \savg{\Mshft^2}, \nonumber\\
+\Mbar &\equiv \savg{\Mshft}, &
+MM &\equiv \svar(\Mshft) = \MMhat - \Mbar^2, \nonumber\\
+YM &\equiv \scov(\Mshft, y) = \YMhat - \bar{y}\Mbar.
+\end{align}
+
+\subsection{Closed-form linear least squares for $(\theta_1, \theta_3)$}
+\label{app:closedform}
+
+For a given phase shift $\theta_2$, the optimal amplitude and offset
+are obtained by setting the partial derivatives of $V$ with respect
+to $\theta_1$ and $\theta_3$ to zero:
+\begin{align}
+0 = \frac{\partial V}{\partial\theta_1} &= -2\sum_i w_i(y_i - \theta_1\Mshft - \theta_3)\Mshft \nonumber \\
+   &\propto \YMhat - \theta_1 \MMhat - \theta_3 \Mbar,\\
+0 = \frac{\partial V}{\partial\theta_3} &= -2\sum_i w_i(y_i - \theta_1\Mshft - \theta_3) \nonumber \\
+   &\propto \bar{y} - \theta_1 \Mbar - \theta_3.
+\end{align}
+This $2\!\times\!2$ system can be written as
+\begin{equation}
+\begin{pmatrix} \MMhat & \Mbar \\ \Mbar & 1 \end{pmatrix}
+\begin{pmatrix} \theta_1 \\ \theta_3 \end{pmatrix}
+=
+\begin{pmatrix} \YMhat \\ \bar{y}\end{pmatrix},
+\end{equation}
+with closed-form solution
+\begin{equation}\label{eq:appthetaopt}
+\begin{pmatrix} \theta_1 \\ \theta_3 \end{pmatrix}
+=
+\begin{pmatrix} YM / MM \\ \bar{y} - \Mbar\,(YM / MM)\end{pmatrix},
+\end{equation}
+where $MM = \MMhat - \Mbar^2$ and
+$YM = \YMhat - \bar{y}\Mbar$.  The fitted model is then
+\begin{equation}
+\hat{y}_i = \bar{y} + \left(\frac{YM}{MM}\right)\!\left(M_i - \Mbar\right).
+\end{equation}
+
+\subsection{The periodogram in terms of $YY$, $YM$, and $MM$}
+\label{app:periodogramform}
+
+Substituting Equation~\ref{eq:appthetaopt} into $V$,
+\begin{align}
+V &= \sum_i w_i (y_i - \hat{y}_i)^2 = \sum_i w_i (y_i^2 - 2y_i\hat{y}_i + \hat{y}_i^2) \nonumber\\
+  &= YY - 2\frac{(YM)^2}{MM} + \frac{(YM)^2}{MM} \nonumber\\
+  &= YY - \frac{(YM)^2}{MM}.
+\end{align}
+Since $V_0 = YY$,
+\begin{equation}
+P(\omega) = 1 - \frac{V}{V_0} = \frac{(YM)^2}{YY\cdot MM},
+\end{equation}
+which is Equation~\ref{eq:Pofomega} of the body.
+
+\subsection{Polynomial expansion of $MM$ and $YM$}
+\label{app:mmandym}
+
+The autocovariance of the template values, $MM$, is given by
+\begin{align}
+MM &\equiv \sum_i w_i M_i^2 - \left(\sum_i w_i M_i\right)^2 \nonumber\\
+   &= \sum_i w_i \left(\sum_n A_n\cos{\omega n t_i} + B_n\sin{\omega n t_i}\right)^2 \nonumber\\
+   &\qquad - \left(\sum_n A_n C_n + B_n S_n\right)^2 \nonumber\\
+   &= \sum_{n,m} A_n A_m CC_{nm} + 2 A_n B_m CS_{nm} \nonumber\\
+   &\qquad + B_n B_m SS_{nm},
+\end{align}
+using the symmetry
+$\sum_{n,m} A_n B_m CS_{nm} = \sum_{n,m} A_m B_n CS_{mn}$.
+
+The products $A_n A_m$, $A_n B_m$, $B_n B_m$ expand as
+\begin{align}
+A_n A_m &= \alpha_n\alpha_m \eith^{n+m} + \alpha^{*}_n\alpha_m \eith^{m-n} \nonumber\\
+        &\qquad + \alpha_n\alpha^{*}_m \eith^{n-m} + \alpha^{*}_n\alpha^{*}_m \eith^{-n-m},\\
+A_n B_m &= -i\bigl[\alpha_n\alpha_m \eith^{n+m} + \alpha^{*}_n\alpha_m \eith^{m-n} \nonumber\\
+        &\qquad - \alpha_n\alpha^{*}_m \eith^{n-m} - \alpha^{*}_n\alpha^{*}_m \eith^{-n-m}\bigr],\\
+B_n B_m &= -\bigl[\alpha_n\alpha_m \eith^{n+m} - \alpha^{*}_n\alpha_m \eith^{m-n} \nonumber\\
+        &\qquad - \alpha_n\alpha^{*}_m \eith^{n-m} + \alpha^{*}_n\alpha^{*}_m \eith^{-n-m}\bigr].
+\end{align}
+
+Substituting these into the $MM$ sum gives the polynomial form
+\begin{align}\label{eq:appMM}
+MM_{nm} &= A_n A_m CC_{nm} + 2 A_n B_m CS_{nm} + B_n B_m SS_{nm} \nonumber\\
+        &= \alpha_n\alpha_m\CCt_{nm}\eith^{n+m} + 2\alpha_n\alpha^{*}_m\CSt_{nm}\eith^{n-m} \nonumber\\
+        &\qquad + \alpha^{*}_n\alpha^{*}_m\SSt_{nm}\eith^{-(n+m)},
+\end{align}
+where
+\begin{align}
+\CCt_{nm}  &= (CC_{nm} - SS_{nm}) - i\left(CS + CS^T\right)_{nm}, \\
+\CSt_{nm}  &= (CC_{nm} + SS_{nm}) + i\left(CS - CS^T\right)_{nm},\\
+\SSt_{nm}  &= (CC_{nm} - SS_{nm}) + i\left(CS + CS^T\right)_{nm}.
+\end{align}
+
+Analogously, the cross term $YM$ expands as
+\begin{align}\label{eq:appYM}
+YM_{k} &= A_k YC_k + B_k YS_k \nonumber\\
+       &= \alpha_k YC_k\eith^k + \alpha_k^{*} YC_k\eith^{-k} \nonumber\\
+       &\qquad - i\left(\alpha_k YS_k\eith^k - \alpha^{*}_k YS_k\eith^{-k}\right) \nonumber\\
+       &= \alpha_k\YCt_k \eith^k + \alpha^{*}_k\YCt_k^{*} \eith^{-k},
+\end{align}
+where $\YCt_k \equiv YC_k - i YS_k$.
+
+\subsection{From the non-linear condition to the polynomial form}
+\label{app:polynomialform}
+
+The non-linear condition Equation~\ref{eq:theta2cond} can be
+rewritten in terms of the rescaled quantities
+$YM' \equiv \eith^H YM$ and $MM' \equiv \eith^{2H} MM$, which (from
+Equations~\ref{eq:appMM}--\ref{eq:appYM}) are polynomials in $\eith$
+of degree $2H$ and $4H$, respectively.  Their derivatives are
+\begin{align}
+\partial YM' &= H\eith^{H-1} YM + \eith^H \partial YM,\\
+\partial MM' &= 2H\eith^{2H-1} MM + \eith^{2H}\partial MM.
+\end{align}
+Combining these,
+\begin{align}\label{eq:appfinalpoly}
+0 &= 2 MM\,\partial(YM) - YM\,\partial(MM) \nonumber\\
+  &= \eith^{3H+1}\bigl[2 MM\,\partial(YM) - YM\,\partial(MM)\bigr] \nonumber\\
+  &= 2\,\eith^{2H} MM\bigl[\eith^{H+1}\partial(YM)\bigr] \nonumber\\
+  &\qquad - \eith^H YM\bigl[\eith^{2H+1}\partial(MM)\bigr] \nonumber\\
+  &= 2\, MM'\bigl[\eith\,\partial(YM') - H\,(YM')\bigr] \nonumber\\
+  &\qquad - YM'\bigl[\eith\,\partial(MM') - 2H\,(MM')\bigr] \nonumber\\
+  &= \eith\bigl[2\, MM'\,\partial(YM') - YM'\,\partial(MM')\bigr] \nonumber\\
+  &\qquad - 2H\bigl[MM'\,YM' - YM'\,MM'\bigr] \nonumber\\
+  &= 2\, MM'\,\partial(YM') - YM'\,\partial(MM').
+\end{align}
+The last step assumes $\eith\ne 0$, which holds since
+$\eith = e^{i\theta_2}$ lies on the unit circle for all real
+$\theta_2$.  Equation~\ref{eq:appfinalpoly} is the polynomial
+root-finding condition of Equation~\ref{eq:finalpoly} in the body.
 
 \section{Shared-phase multi-band template periodogram}\label{sec:shphmult}
 
