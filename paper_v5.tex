@@ -620,8 +620,19 @@ to search for the optimal parameters while enforcing that $\theta_1 > 0$,
 e.g. via non-linear optimization, but this likely will eliminate the computational
 advantage of FTP over existing methods.
 
-Thus, we allow for negative amplitude solutions in the model fit and caution
-the user to check that the best fit $\theta_1$ is positive.
+Thus, in the present implementation we allow for negative amplitude
+solutions in the model fit and caution the user to check that the best
+fit $\theta_1$ is positive. Going forward, the cost of the positivity
+constraint is much smaller than the cost of the unconstrained polynomial
+root-finding step, because for each candidate frequency the optimal
+$\theta_1 > 0$ solution can be obtained by re-evaluating the periodogram
+at the same set of polynomial roots after restricting to those that
+produce a positive $\theta_1$, with no additional root-finding required.
+We therefore plan to bake this check directly into the public API in
+v0.2 of the \texttt{ftperiodogram} library: \texttt{power(\dots)} will
+always return the better-fitting solution with $\theta_1 > 0$, making
+the \texttt{sgn} flag an internal implementation detail rather than a
+user-facing knob.
 
 
 \subsection{Extending to multi-band observations}
