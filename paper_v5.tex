@@ -100,19 +100,19 @@ G.~\'A Bakos\altaffilmark{3,}\altaffilmark{4}}
     Astrophysical time series often contain periodic signals. The large and growing volume of time series data from
     photometric surveys demands computationally efficient methods for detecting and characterizing such signals.
     The most efficient algorithms available for this purpose are those that exploit the
-    $\bigO(N\log N)$ scaling of the Fast Fourier Transform (FFT). However, these methods are not optimal
+    $\bigO(N\log N)$ scaling of the Fast Fourier Transform (FFT) in the transform size $N$. However, these methods are not optimal
     for non-sinusoidal signal shapes. Template fits (or periodic matched filters) optimize
     sensitivity for \emph{a priori} known signal shapes---for example, the characteristic lightcurves of RR~Lyrae,
     Cepheids, $\delta$~Scuti variables, eclipsing binaries, and exoplanetary transits---but at a significant computational cost. Current
     implementations of template periodograms scale as $\bigO(N_f N_{\rm obs})$, where $N_f$ is the number
     of trial frequencies and $N_{\rm obs}$ is the number of lightcurve observations, and due to non-convexity, they do not
     guarantee the best fit at each trial frequency, which can lead to spurious results. In this work, we present a non-linear extension of the Lomb-Scargle
-    periodogram to obtain a template-fitting algorithm that is both accurate (globally optimal solutions are
+    periodogram---non-linear in the sense that the joint optimization over the template's phase shift and harmonic amplitudes is non-convex, even though the model is linear in the amplitudes at any fixed phase shift---to obtain a template-fitting algorithm that is both accurate (globally optimal solutions are
     obtained except in pathological cases) and computationally efficient (scaling as $\bigO(N_f\log N_f)$ for a given template).
     The non-linear optimization of the template fit at each frequency is recast as a polynomial
     zero-finding problem, where the coefficients of the polynomial can be computed efficiently with
     the non-equispaced fast Fourier transform. We show that our method, which uses truncated Fourier series to approximate templates,
-    is an order of magnitude faster than existing algorithms for small problems ($N\lesssim 10$ observations) and
+    is an order of magnitude faster than existing algorithms for small problems ($N_{\rm obs}\lesssim 10$ observations) and
     2 orders of magnitude faster for long base-line time series with $N_{\rm obs} \gtrsim 10^4$ observations.
     Signals with very sharp features (e.g.\ limb-darkened transits with brief ingress, sharp eclipses) require moderate-to-high harmonic orders ($H\gtrsim 20$) to be reproduced at the $99\%$ $L^2$ level (Table~\ref{tab:hvsaccuracy}); for such signals, transit-tailored methods such as the Box Least-Squares periodogram may be more efficient.
     An open-source implementation of the fast template periodogram is freely available online.\footnote{\url{https://github.com/PrincetonUniversity/FastTemplatePeriodogram}}
