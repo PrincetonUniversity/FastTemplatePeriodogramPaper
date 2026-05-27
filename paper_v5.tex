@@ -1109,6 +1109,16 @@ The current implementation could likely be improved by:
           coefficient calculations and the zero-finding steps. This could potentially yield
           a speedup of $\sim1-2$ orders of magnitude over the current implementation.
     \item Exploiting the embarassingly parallel nature of the FTP using GPU's.
+    \item Searching over a small library of templates with independent
+          amplitudes and phases per template, rather than a single fixed
+          template. This is a natural extension when the underlying
+          signal class is heterogeneous (e.g.\ a mixture of RR\,Lyrae
+          subtypes); the polynomial-root formulation generalises to the
+          shared-frequency multi-template setting analogously to the
+          shared-phase multi-band extension of
+          Appendix~\ref{sec:shphmult}, and the principled construction
+          of a small, representative template library from a labelled
+          training set is itself an active line of work.
 \end{enumerate}
 
 For a constant baseline, the current implementation improves existing methods by factors
@@ -1120,6 +1130,13 @@ themselves admit a further factor of $\sim 25\text{--}100$ speedup, which would 
 shortcut that, combined with a more efficient implementation, will make template fitting
 a fast and valuable tool for detecting non-sinusoidal periodic signals of specified shape
 in large time-series datasets.
+
+A real-survey demonstration of the multi-band FTP against
+single-band Lomb--Scargle, multi-band Lomb--Scargle
+\citep{Vanderplas+Ivezic_2015}, and full non-linear template fitting
+\citep{Sesar_etal_2016} is the natural next step and is the subject of
+follow-up work using the Zwicky Transient Facility public DR22 sparse
+multi-band photometry of RR\,Lyrae.
 
 
 
