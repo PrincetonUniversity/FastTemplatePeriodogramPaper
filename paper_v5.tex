@@ -298,7 +298,10 @@ are non-sinusoidal (e.g. RR Lyrae, eclipsing binaries, etc.).
 However, the MHLS periodogram contains $2H+1$ free parameters while the original LS periodogram
 contains only $2$ ($3$ if the mean brightness is considered a free parameter). Including higher order
 harmonics adds model complexity, which can degrade the sensitivity of the MHLS periodogram to
-sinusoidal or approximately sinusoidal signals.
+sinusoidal or approximately sinusoidal signals. We emphasise that this is a model-selection / signal-to-noise
+penalty---more free parameters absorb more noise variance from each trial frequency---rather than an optimisation
+failure: the MHLS least-squares problem is linear in $\theta$ at fixed $\omega$ and its global minimum can
+be obtained directly without iteration.
 
 Tikhonov regularisation (also known as $L_2$ regularisation) is one tool for
 mitigating overfitting of the higher-order harmonics. Adding an $L_2$ penalty
@@ -323,7 +326,7 @@ The first, by \cite{Press+Rybicki_1989} involves``extirpolating'' irregularly sa
 data onto a regularly sampled mesh, and then performing FFTs to evaluate the necessary sums.
 The second, as pointed out in \cite{Leroy_2012}, is to use the non-equispaced FFT \citep[][NFFT]{NFFT_KKD2009,NFFT_DR1993}
 to evaluate the sums; this provides roughly an order of magnitude speedup over the \cite{Press+Rybicki_1989}
-algorithm, and both algorithms scale as $\bigO(N_f\log N_f)$ \citep{Leroy_2012}.
+algorithm, and both algorithms scale as $\bigO(N_f\log N_f)$ \citep{Leroy_2012}. A third option---used in many production pipelines---is to bypass the FFT altogether and solve the per-frequency $2{\times}2$ (or $(2H{+}1){\times}(2H{+}1)$ in the multi-harmonic case) normal equations directly with a dense linear solver; this is simpler to implement than the NFFT-based formulation but loses the $\bigO(\log N_f)$ scaling. We adopt the NFFT formulation in this work both for its asymptotic speed at the large $N_f$ relevant to upcoming surveys and because, as shown in \S\ref{sec:derivations}, the NFFT-computable trigonometric sums are precisely the polynomial coefficients required to recast the non-linear template-fitting step as a root-finding problem.
 
 There is a growing population of alternative methods for detecting
 periodic signals in astrophysical data. Some of these methods can reliably
