@@ -134,7 +134,7 @@ characterizing this variability, astronomers are able to infer a variety of impo
 astrophysical properties about the underlying system.
 
 Periodic signals in noisy astronomical timeseries can be detected with a number of techniques,
-including Gaussian process regression \citep{Foreman-Mackey_etal_2017,Rasmussen+Williams_2006},
+including Gaussian process regression \citep{Foreman-Mackey_etal_2017,Rasmussen+Williams_2006,Aigrain+Foreman-Mackey_2023,Gordon_etal_2021},
 least-squares spectral analysis \citep{Lomb_1976,Scargle_1982,Barning_1963,Vanicek_1971}, and
 information-theoretic methods \citep{Graham_etal_2013b,Huijse_etal_2012,Cincotta_etal_1995}. For an empirical
 comparison of some of these techniques applied to several astronomical survey datasets, see
@@ -250,7 +250,7 @@ eccentricity inference, where the parameterisation
 $(e\cos\varpi,\, e\sin\varpi)$ -- introduced for sampling efficiency by
 \cite{Ford_2006} -- implicitly imposes a linear prior on the eccentricity $e$
 that has since been corrected for or replaced
-\citep{Eastman_etal_2013}. The maximum-likelihood reading invoked here makes
+\citep{Eastman_etal_2013}; the prior-choice question remains active in this domain \citep{Stevenson_etal_2025}. The maximum-likelihood reading invoked here makes
 none of these implicit prior assumptions, and we adopt it throughout.
 
 A genuinely Bayesian treatment of the LS periodogram, in which the
@@ -273,16 +273,16 @@ As remarked in \citep{Vanderplas_2018}, the probabilistic interpretation of a
 periodogram is only as good as the noise model underlying it; in practice the
 working assumptions (uncorrelated, Gaussian uncertainties, no systematics) are
 often broken in real astronomical timeseries, and the maximum-likelihood
-reading above should be understood with the same caveats.
+reading above should be understood with the same caveats. \citet{Hara_etal_2022} provide a complementary diagnostic for testing whether a periodogram peak corresponds to a strictly periodic component or to time-varying activity, which is useful when the noise model is uncertain.
 
 
 
 \subsection{Extending Lomb-Scargle}
 
 The LS periodogram has numerous extensions to account for, e.g., biased estimates of the mean brightness
-\citep{Zechmeister+Kurster_2009}, non-sinusoidal signals \citep{Schwarzenberg-Czerny_1996,Bretthorst_2003,Palmer_2009,Baluev_2009,Baluev_2013a,Wheeler+Kipping_2019}, multiple periodicities \citep{Baluev_2013b,Baluev_2013c},
+\citep{Zechmeister+Kurster_2009}, non-sinusoidal signals \citep{Schwarzenberg-Czerny_1996,Bretthorst_2003,Palmer_2009,Baluev_2009,Baluev_2013a,Wheeler+Kipping_2019}, joint matched-filter and Gaussian-process noise models \citep{Garcia_etal_2024}, multiple periodicities \citep{Baluev_2013b,Baluev_2013c},
 multi-band observations \citep{Vanderplas+Ivezic_2015}, and to mitigate overfitting of more
-flexible models via regularization \citep{Vanderplas+Ivezic_2015}. \cite{Baluev_2008} provided the framework for improving false alarm statistics with extreme value theory, and this was generalized further in \cite{Baluev_2013}. For a more detailed review
+flexible models via regularization \citep{Vanderplas+Ivezic_2015}. \cite{Baluev_2008} provided the framework for improving false alarm statistics with extreme value theory, and this was generalized further in \cite{Baluev_2013b}. For a more detailed review
 of the LS periodogram and its extensions, see \cite{Vanderplas_2018}.
 
 The multi-harmonic LS periodogram \citep[][MHGLS]{Bretthorst+Chi-Cheng_1988,Schwarzenberg-Czerny_1996,Palmer_2009}, provides a more
@@ -342,9 +342,10 @@ is especially valuable for lightcurves with $N_{\rm obs} \gg \log N_f \sim 50$.
 Algorithmic efficiency will become increasingly important as the volume
 of data produced by astronomical observatories continues to grow larger. The HATNet survey
 \citep{HATNet}, for example, has already made $\bigO(10^4)$ observations of
-$\bigO(10^6-10^7)$ stars. The Gaia telescope \citep{GAIA} is set to produce $\bigO(10-100)$
-observations of $\bigO(10^9)$ stars. The Vera C. Rubin Observatory's Legacy Survey of Space and Time \citep[LSST;][]{LSST}, which began science operations in 2025,
-is expected to make $\bigO(10^2-10^3)$ observations of $\bigO(10^{10})$ stars over its ten-year survey.
+$\bigO(10^6-10^7)$ stars. The Gaia mission \citep{GAIA} has now delivered $\bigO(10-100)$
+observations of $\bigO(10^9)$ stars and a dedicated variability processing pipeline that classifies $\bigO(10^7)$ variables across 35 object types \citep{Eyer_etal_2023}. The ASAS-SN survey has likewise contributed $\bigO(10^5)$ new periodic variables from its all-sky $g$-band photometry \citep{Christy_etal_2023}.
+The Vera C. Rubin Observatory's Legacy Survey of Space and Time \citep[LSST;][]{LSST}, which began science operations in 2025,
+is expected to make $\bigO(10^2-10^3)$ observations of $\bigO(10^{10})$ stars over its ten-year survey, and the cadence-dependent reliability of standard-candle classification on the LSST schedule has been analysed in detail by \citet{Hernitschek+Stassun_2021}.
 
 
 \subsection{Template periodograms}
@@ -371,7 +372,7 @@ An analysis by \cite{Sesar_etal_2016} found that template fitting significantly 
 period and amplitude estimation for RR Lyrae in Pan-STARRS DR1 photometry \citep{PanSTARRS}. Since the signal
 shapes for RR Lyrae in various bandpasses are known \emph{a priori} (see \cite{Sesar_etal_2010}),
 template fitting provides an optimal estimate of amplitude and period,
-given that the object is indeed an RR Lyrae star well modeled by at least one of the templates.
+given that the object is indeed an RR Lyrae star well modeled by at least one of the templates. The Gaia DR3 RR\,Lyrae and Cepheid samples \citep{Clementini_etal_2023,Ripepi_etal_2023} extend this template-driven approach to all-sky catalogues of $\bigO(10^5)$ stars, and \citet{Forro_etal_2024} report $\sim 90\%$ agreement between Pan-STARRS PS1 template-derived RR\,Lyrae periods and \emph{K2} high-cadence measurements.
 Templates were especially crucial for Pan-STARRS data, since there are typically only
 35 observations per source over 5 bands \citep{Hernitschek_etal_2016}, not enough to obtain
 accurate amplitudes empirically by phase-folding. By including domain knowledge (i.e. knowledge of what RR Lyrae
@@ -738,8 +739,9 @@ for a pathological trapezoid.  Nevertheless, for surveys targeting
 genuinely box-shaped signals with very sharp ingress/egress
 (e.g.\ short-cadence shallow transits or short-duration eclipses),
 transit-tailored methods such as the Box Least-Squares periodogram
-\citep[BLS,][]{Kovacs_2002} are likely to be a more efficient choice
-than FTP.
+\citep[BLS,][]{Kovacs_2002}---of which a GPU-accelerated
+descendant, CETRA, has recently been described by \citet{Smith_etal_2025}---are
+likely to be a more efficient choice than FTP.
 
 
 \subsection{Choosing the harmonic order \texorpdfstring{$H$}{H}}\label{sec:choiceH}
@@ -1136,7 +1138,7 @@ single-band Lomb--Scargle, multi-band Lomb--Scargle
 \citep{Vanderplas+Ivezic_2015}, and full non-linear template fitting
 \citep{Sesar_etal_2016} is the natural next step and is the subject of
 follow-up work using the Zwicky Transient Facility public DR22 sparse
-multi-band photometry of RR\,Lyrae.
+multi-band photometry of RR\,Lyrae, with the Gaia DR3 RR\,Lyrae catalogue \citep{Clementini_etal_2023} serving as an all-sky cross-matching benchmark.
 
 
 
