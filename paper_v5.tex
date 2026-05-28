@@ -11,6 +11,7 @@
 
 \newcommand{\todo}[1]{{\bf #1}}
 \newcommand{\bigO}{\mathcal{O}}
+\newcommand{\wgt}{\mathsf{w}}  % normalized weight: upright sans-serif, visually distinct from \omega (Lintott L.7)
 \newcommand{\savg}[1]{\left<#1\right>}
 \newcommand{\svar}{{\rm Var}}
 \newcommand{\scov}{{\rm Cov}}
@@ -55,7 +56,7 @@
 \newcommand{\YMh}[1][k]{\YMhat^{(#1)}}
 \newcommand{\MMh}[1][k]{\MMhat^{(#1)}}
 \newcommand{\yb}[1][k]{\ybar^{(#1)}}
-\newcommand{\wk}[1][k]{w^{(#1)}}
+\newcommand{\wk}[1][k]{\wgt^{(#1)}}
 \newcommand{\yhk}[1][k]{\hat{y}^{(#1)}}
 \newcommand{\yk}[1][k]{y^{(#1)}}
 \newcommand{\Mtshftk}[1][k]{\Mtshft^{(#1)}}
@@ -170,22 +171,22 @@ P(\omega) = \frac{V_0 - V(\omega)}{V_0}
 where $V_0$ is the weighted sum of squared residuals for a constant fit:
 
 \begin{equation}
-V_0 = \sum_i w_i (y_i - \bar{y})^2
+V_0 = \sum_i \wgt_i (y_i - \bar{y})^2
 \end{equation}
 
-with $\bar{y} = \sum_i w_i y_i$ the weighted mean of the observations and
-$w_i \propto \sigma_i^{-2}$ the normalised weights for each observation
-($\sum_i w_i = 1$), and $V(\omega)$ is the weighted sum of squared residuals
+with $\bar{y} = \sum_i \wgt_i y_i$ the weighted mean of the observations and
+$\wgt_i \propto \sigma_i^{-2}$ the normalised weights for each observation
+($\sum_i \wgt_i = 1$), and $V(\omega)$ is the weighted sum of squared residuals
 for the best-fit model $\hat{y}$ at a given trial frequency
 $\omega = 2\pi / P$ where $P$ is the period:
 
 \begin{equation}
-V(\omega) = \min_{\theta} \sum_i w_i (y_i - \hat{y}(t_i; \omega, \theta))^2.
+V(\omega) = \min_{\theta} \sum_i \wgt_i (y_i - \hat{y}(t_i; \omega, \theta))^2.
 \end{equation}
 
 We use the symbol $V$ rather than $\chi^2$ to follow the convention common in
-the linear least-squares literature: with $\sum_i w_i = 1$ the quantity
-$\sum_i w_i (y_i - \hat{y}_i)^2$ is the weighted sum of squared residuals but
+the linear least-squares literature: with $\sum_i \wgt_i = 1$ the quantity
+$\sum_i \wgt_i (y_i - \hat{y}_i)^2$ is the weighted sum of squared residuals but
 is not strictly $\chi^2$-distributed, so the $\chi^2$ symbol can be misleading.
 
 
@@ -211,12 +212,12 @@ where we use $\mathcal{D} = \{(t_i, y_i, \sigma_i) \,|\, 0 < i \le N_{\mathrm{ob
 \end{align}
 
 where $W = \sum_i \sigma_i^{-2}$ and
-$V(\theta,\omega) \equiv \sum_i w_i (y_i - \hat{y}(t_i; \omega, \theta))^2$ is
+$V(\theta,\omega) \equiv \sum_i \wgt_i (y_i - \hat{y}(t_i; \omega, \theta))^2$ is
 the weighted sum of squared residuals written with the normalised weights
-$w_i = \sigma_i^{-2}/W$ ($\sum_i w_i = 1$). Hence
+$\wgt_i = \sigma_i^{-2}/W$ ($\sum_i \wgt_i = 1$). Hence
 
 \begin{align}
-    V(\omega) &= \min_{\theta} \sum_i w_i (y_i - \hat{y}(t_i; \omega, \theta))^2\\
+    V(\omega) &= \min_{\theta} \sum_i \wgt_i (y_i - \hat{y}(t_i; \omega, \theta))^2\\
               &= -\frac{2}{W}\max_\theta \log p(\mathcal{D}|\omega, \theta) + \mathrm{const.},
 \end{align}
 
@@ -338,6 +339,17 @@ of observations and $N_f$ is the number of trial frequencies, while the Lomb-Sca
 periodogram scales as $\bigO(N_f\log N_f)$. The virtual independence of Lomb-Scargle's computation
 time with respect to the number of observations (assuming $N_f \gtrsim N_{\rm obs}$)
 is especially valuable for lightcurves with $N_{\rm obs} \gg \log N_f \sim 50$.
+To put absolute numbers on this, computing a Lomb--Scargle periodogram over
+$N_f = 10^4$ trial frequencies takes $\approx 3$\,ms per source with the NFFT
+formulation, essentially independent of $N_{\rm obs}$ across
+$N_{\rm obs} = 50$--$1000$ ($\approx 0.3\,\mu$s per trial frequency); evaluating
+the same grid with the direct $\bigO(N_f N_{\rm obs})$ method instead ranges from
+$\approx 85$\,ms at $N_{\rm obs} = 50$ to $\approx 210$\,ms at $N_{\rm obs} = 1000$
+($\approx 9$--$21\,\mu$s per trial frequency).\footnote{Representative single-core
+timings (\texttt{gatspy}, Apple Silicon/\texttt{arm64}, Python~3.9, NumPy~2.0)
+over an explicit $[0.01, 10]\,\mathrm{cyc\,day^{-1}}$ frequency grid; reproduction
+script at \texttt{scripts/timing\_v5/ls\_timing.py}. Absolute values are
+hardware-dependent and will be refreshed for the final submission.}
 
 Algorithmic efficiency will become increasingly important as the volume
 of data produced by astronomical observatories continues to grow larger. The HATNet survey
@@ -452,7 +464,7 @@ The optimal parameters are the location of a local minimum of the (weighted) sum
 squared residuals,
 
 \begin{equation}\label{eq:Vdef}
-    V(\theta, S) \equiv \sum_i w_i (y_i - \hat{y}(\omega t_i;\theta) )^2,
+    V(\theta, S) \equiv \sum_i \wgt_i (y_i - \hat{y}(\omega t_i;\theta) )^2,
 \end{equation}
 
 \noindent and thus the following condition must hold for all three model parameters at
@@ -1239,16 +1251,16 @@ $\partial_j\hat{y}_i = \left.\partial\hat{y}(\omega t;\theta)/\partial\theta_j\r
 \begin{equation}\label{eq:appsimpconds}
 \begin{split}
 0 &= \left.\frac{\partial V}{\partial\theta_j}\right|_{\theta=\theta_{\rm opt}}\\
-  &= -2\sum_i w_i\left(y_i - \hat{y}_i \right)(\partial_j\hat{y})_i, \\
-\sum_i w_iy_i(\partial_j\hat{y})_i &= \sum_i w_i \hat{y}_i(\partial_j\hat{y})_i.
+  &= -2\sum_i \wgt_i\left(y_i - \hat{y}_i \right)(\partial_j\hat{y})_i, \\
+\sum_i \wgt_iy_i(\partial_j\hat{y})_i &= \sum_i \wgt_i \hat{y}_i(\partial_j\hat{y})_i.
 \end{split}
 \end{equation}
 This is a general result that extends to all least-squares
 periodograms.  To simplify the derivations below we adopt the
 weighted-average notation
 \begin{eqnarray}
-\savg{X} &\equiv& \sum_i w_i X_i,\\
-\savg{XY} &\equiv& \sum_i w_i X_iY_i,\\
+\savg{X} &\equiv& \sum_i \wgt_i X_i,\\
+\savg{XY} &\equiv& \sum_i \wgt_i X_iY_i,\\
 \scov(X, Y) &\equiv& \savg{XY} - \savg{X}\savg{Y},\\
 \svar(X) &\equiv& \scov(X, X).
 \end{eqnarray}
@@ -1283,9 +1295,9 @@ For a given phase shift $\theta_2$, the optimal amplitude and offset
 are obtained by setting the partial derivatives of $V$ with respect
 to $\theta_1$ and $\theta_3$ to zero:
 \begin{align}
-0 = \frac{\partial V}{\partial\theta_1} &= -2\sum_i w_i(y_i - \theta_1\Mshft - \theta_3)\Mshft \nonumber \\
+0 = \frac{\partial V}{\partial\theta_1} &= -2\sum_i \wgt_i(y_i - \theta_1\Mshft - \theta_3)\Mshft \nonumber \\
    &\propto \YMhat - \theta_1 \MMhat - \theta_3 \Mbar,\\
-0 = \frac{\partial V}{\partial\theta_3} &= -2\sum_i w_i(y_i - \theta_1\Mshft - \theta_3) \nonumber \\
+0 = \frac{\partial V}{\partial\theta_3} &= -2\sum_i \wgt_i(y_i - \theta_1\Mshft - \theta_3) \nonumber \\
    &\propto \bar{y} - \theta_1 \Mbar - \theta_3.
 \end{align}
 This $2\!\times\!2$ system can be written as
@@ -1312,7 +1324,7 @@ $YM = \YMhat - \bar{y}\Mbar$.  The fitted model is then
 
 Substituting Equation~\ref{eq:appthetaopt} into $V$,
 \begin{align}
-V &= \sum_i w_i (y_i - \hat{y}_i)^2 = \sum_i w_i (y_i^2 - 2y_i\hat{y}_i + \hat{y}_i^2) \nonumber\\
+V &= \sum_i \wgt_i (y_i - \hat{y}_i)^2 = \sum_i \wgt_i (y_i^2 - 2y_i\hat{y}_i + \hat{y}_i^2) \nonumber\\
   &= YY - 2\frac{(YM)^2}{MM} + \frac{(YM)^2}{MM} \nonumber\\
   &= YY - \frac{(YM)^2}{MM}.
 \end{align}
@@ -1327,8 +1339,8 @@ which is Equation~\ref{eq:Pofomega} of the body.
 
 The autocovariance of the template values, $MM$, is given by
 \begin{align}
-MM &\equiv \sum_i w_i M_i^2 - \left(\sum_i w_i M_i\right)^2 \nonumber\\
-   &= \sum_i w_i \left(\sum_n A_n\cos{\omega n t_i} + B_n\sin{\omega n t_i}\right)^2 \nonumber\\
+MM &\equiv \sum_i \wgt_i M_i^2 - \left(\sum_i \wgt_i M_i\right)^2 \nonumber\\
+   &= \sum_i \wgt_i \left(\sum_n A_n\cos{\omega n t_i} + B_n\sin{\omega n t_i}\right)^2 \nonumber\\
    &\qquad - \left(\sum_n A_n C_n + B_n S_n\right)^2 \nonumber\\
    &= \sum_{n,m} A_n A_m CC_{nm} + 2 A_n B_m CS_{nm} \nonumber\\
    &\qquad + B_n B_m SS_{nm},
