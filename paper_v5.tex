@@ -109,7 +109,7 @@ G.~\'A Bakos\altaffilmark{3,}\altaffilmark{4}}
     of trial frequencies and $N_{\rm obs}$ is the number of lightcurve observations, and due to non-convexity, they do not
     guarantee the best fit at each trial frequency, which can lead to spurious results. In this work, we present a non-linear extension of the Lomb-Scargle
     periodogram---non-linear in the sense that the joint optimization over the template's phase shift and harmonic amplitudes is non-convex, even though the model is linear in the amplitudes at any fixed phase shift---to obtain a template-fitting algorithm that is both accurate (globally optimal solutions are
-    obtained except in pathological cases) and computationally efficient (scaling as $\bigO(N_f\log N_f)$ for a given template).
+    obtained except in pathological cases---in practice, when a single observation dominates the total inverse-variance weight budget by a factor $\gtrsim 10^8$) and computationally efficient (scaling as $\bigO(N_f\log N_f)$ for a given template).
     The non-linear optimization of the template fit at each frequency is recast as a polynomial
     zero-finding problem, where the coefficients of the polynomial can be computed efficiently with
     the non-equispaced fast Fourier transform. We show that our method, which uses truncated Fourier series to approximate templates,
@@ -556,7 +556,10 @@ condition Equation~\ref{eq:theta2cond} is equivalent to
 \begin{equation}\label{eq:finalpoly}
     0 \;=\; 2\,MM'\,\partial(YM') \;-\; YM'\,\partial(MM'),
 \end{equation}
-a polynomial of degree $6H-1$ in $\eith$.  The coefficients of this
+a polynomial of degree at most $6H-2$ in $\eith$: the nominal
+degree-$(6H{-}1)$ terms cancel identically, because both products have
+leading coefficient $4H$ times the product of the leading coefficients
+of $YM'$ and $MM'$ ($\deg MM' = 2\deg YM'$).  The coefficients of this
 polynomial are linear combinations of the weighted trigonometric sums
 \begin{align}
 CC_{nm} &\equiv \scov(\cos{n\omega t},\cos{m\omega t}),\label{eq:CCdef}\\
@@ -582,9 +585,14 @@ introduces spurious roots, and $\eith$ must lie on the unit circle
 ($|\eith|=1$ for real $\theta_2$).  We therefore scale each root by
 its modulus to enforce the unit-circle constraint; iterative schemes
 such as Newton's method could be used for greater robustness, but the
-maximum periodogram error of the present implementation is below
-$10^{-7}$ across the $H$ values tested
-(Section~\ref{sec:choiceH}).
+measured periodogram error floor of the present implementation is
+$\sim 10^{-15}$ (direct summations) to $\sim 10^{-13}$ (NFFT-based
+summations), verified through $H = 21$
+(Section~\ref{sec:choiceH}).  This floor is measured under
+homoscedastic measurement errors; it degrades when a single
+observation dominates the total inverse-variance weight budget by a
+factor $\gtrsim 10^8$, with the fast NFFT-based summations degrading
+earlier than direct summations (Section~\ref{sec:choiceH}).
 
 \medskip\noindent\textbf{Summary of the algorithm.}
 We have derived an explicit, non-linear system of equations to solve
@@ -594,7 +602,7 @@ for each $\omega$ the FTP proceeds as follows:
 \item Compute the weighted trigonometric sums of
       Equations~\ref{eq:CCdef}--\ref{eq:YSdef} at all trial
       frequencies $\omega$ using the NFFT.
-\item Assemble the coefficients of the degree-$(6H{-}1)$ polynomial
+\item Assemble the coefficients of the degree-$({\le}\,6H{-}2)$ polynomial
       of Equation~\ref{eq:finalpoly} from the sums of step~1; the
       closed-form assembly is given in
       Appendix~\ref{app:fullderivation}
@@ -636,19 +644,20 @@ to search for the optimal parameters while enforcing that $\theta_1 > 0$,
 e.g. via non-linear optimization, but this likely will eliminate the computational
 advantage of FTP over existing methods.
 
-Thus, in the present implementation we allow for negative amplitude
-solutions in the model fit and caution the user to check that the best
-fit $\theta_1$ is positive. Going forward, the cost of the positivity
-constraint is much smaller than the cost of the unconstrained polynomial
-root-finding step, because for each candidate frequency the optimal
-$\theta_1 > 0$ solution can be obtained by re-evaluating the periodogram
-at the same set of polynomial roots after restricting to those that
-produce a positive $\theta_1$, with no additional root-finding required.
-We therefore plan to bake this check directly into the public API in
-v0.2 of the \texttt{ftperiodogram} library: \texttt{power(\dots)} will
-always return the better-fitting solution with $\theta_1 > 0$, making
-the \texttt{sgn} flag an internal implementation detail rather than a
-user-facing knob.
+The cost of the positivity constraint is, however, much smaller than
+the cost of the unconstrained polynomial root-finding step: for each
+candidate frequency the optimal $\theta_1 \geq 0$ solution is obtained
+by re-evaluating the periodogram at the \emph{same} set of polynomial
+roots after restricting to those that produce a non-negative
+amplitude, with no additional root-finding required.  The
+implementation accompanying this paper includes this constant-time
+filter.  The multiband solver (Appendix~\ref{sec:shphmult}) applies it
+by default, falling back to the unconstrained maximum only in the
+degenerate case where \emph{no} candidate root yields
+$\theta_1 \geq 0$; the single-band \texttt{power(\dots)} retains the
+unconstrained behavior for continuity with Lomb--Scargle conventions
+and exposes the sign of the best fit, and we caution the user to check
+that the best-fit $\theta_1$ is positive when using it.
 
 
 \subsection{Extending to multi-band observations}
@@ -679,7 +688,7 @@ Other multi-band extensions of the template periodogram are provided in Appendix
 For a given number of harmonics $H$, the task of deriving
 the polynomial given in Equation \ref{eq:finalpoly} requires $\bigO(H^2)$ computations,
 and finding the roots of this polynomial requires $\bigO(H^3)$ computations. The degree of the final
-polynomial is $6H - 1$.
+polynomial is at most $6H - 2$.
 
 When considering $N_f$ trial frequencies, the polynomial computation and root-finding
 step scales as $\bigO(H^3N_f)$. The computation of the sums
@@ -700,7 +709,7 @@ transforms used to compute the $C$ and $S$ sums of
 Equations \ref{eq:CCdef}--\ref{eq:YSdef}, dominates at low
 $H$ and large $N_f$ -- the regime typical of large surveys with
 near-sinusoidal templates.  The second term, from constructing
-and rooting the degree-$(6H-1)$ polynomial of
+and rooting the degree-$({\le}\,6H{-}2)$ polynomial of
 Equation \ref{eq:finalpoly} at every trial frequency, dominates
 at moderate-to-high $H$ and moderate $N_f$ -- the regime typical
 of sharply peaked templates such as eclipsing-binary or
@@ -735,7 +744,7 @@ This practical ceiling has a direct bearing on the algorithm's scope of
 applicability for box-like signals such as exoplanetary transits and
 detached eclipsing binaries.  As we calibrate in
 Section~\ref{sec:choiceH}, the canonical analytic trapezoidal-transit and
-detached-EB templates considered here have second-derivative
+detached-EB templates considered here have slope (first-derivative)
 discontinuities at their ingress/egress corners, which produce a
 $\sim 1/n^2$ tail in the Fourier coefficients and require
 $H \approx 12$ to reach $95\%$ $L^2$ fidelity and $H \approx 21$ to
@@ -799,10 +808,16 @@ requirements.  At the low end, the ellipsoidal$\;+\;$beaming profile is
 exactly band-limited at $H = 2$; the skewed-sinusoid RR\,Lyrae c
 reaches $99\%$ at $H = 3$.  The asymmetric-pulse RR\,Lyrae ab
 profile reaches $99\%$ at $H = 8$.  At the high end, the trapezoidal
-transit and detached-EB templates have second-derivative
+transit and detached-EB templates have slope (first-derivative)
 discontinuities at their ingress/egress corners, which gives a
 $\sim 1/n^2$ tail in the Fourier coefficients; both require
 $H \approx 12$ for $95\%$ fidelity and $H \approx 21$ for $99\%$.
+These tabulated values are specific to the $12$ per cent duty cycle
+of the analytic trapezoids used here: for a pulse of duty cycle
+$\delta$ the Fourier energy extends to harmonics $n \sim 1/\delta$,
+so the required harmonic order scales as
+$H_{\min}(F) \propto 1/\delta$---a $6$ per cent duty-cycle transit
+needs roughly twice the tabulated $H$.
 For applications where the underlying signal has sharper features
 than these analytic templates (e.g. true limb-darkened transits with
 fast cadence), the $99\%$ values may need to be revised upward.
@@ -820,7 +835,13 @@ period is declared recovered when
 $|f_{\rm peak} - f_{\rm true}|/f_{\rm true} < 5\times 10^{-3}$.
 Thirty independent trials are run per (template, SNR) cell.
 For the smooth, near-sinusoidal RR\,Lyrae profiles the two
-estimators agree at all SNRs: a single-harmonic template suffices.
+estimators agree at all SNRs: at this dense sampling
+($N_{\rm obs} = 100$), a single-harmonic template suffices.  (This
+conclusion is specific to the dense-sampling regime; in the sparse
+regime, where few epochs constrain many free parameters, the
+template's shape prior becomes decisive even for these smooth
+profiles, as quantified in the sparse-sampling simulation-validation
+results presented later in the paper.)
 For the three non-sinusoidal templates (transit, EB,
 ellipsoidal$\;+\;$beaming), FTP at $H = H_{95\%}$ recovers the
 period in $\geq 29/30$ trials at every SNR tested, while the
@@ -834,16 +855,29 @@ required to match the underlying signal shape.
 For the numerical-precision consideration (ii), we have measured the
 maximum periodogram error of the implementation in this paper against
 a brute-force evaluation that explicitly maximises $V(\theta,\omega)$
-on a dense $\theta_2$ grid with local refinement.  Across
-$H \in \{1, 2, 3, 5, 7\}$, five random data realisations, and 200 trial
-frequencies, the maximum absolute error in $P(\omega)$ is below
-$10^{-7}$.\footnote{Issue \#33 of the FTP repository at
+on a dense $\theta_2$ grid with local refinement.  Verified through
+$H = 21$ (covering the highest harmonic orders required by
+Table~\ref{tab:hvsaccuracy}), the maximum absolute error in
+$P(\omega)$ is $\sim 10^{-15}$ with direct summations and
+$\sim 10^{-13}$ with the NFFT-based summations.\footnote{Issue \#33 of
+the FTP repository at
 \url{https://github.com/PrincetonUniversity/FastTemplatePeriodogram/issues/33}
 documents the test methodology and the precision floor of
 \texttt{numpy.polynomial.polyroots} as used by the implementation.}
-This is well below any astrophysically relevant amplitude threshold,
-so polynomial-rooting error does not limit FTP at the values of $H$
-considered in Table~\ref{tab:hvsaccuracy}.
+The guarantee is one-sided by construction: every candidate root is
+projected onto the unit circle and the \emph{true} periodogram is
+evaluated there, so the reported power -- a maximum over a finite
+candidate set -- can only \emph{under}estimate the true per-frequency
+maximum, never overestimate it.  These floors are measured under
+homoscedastic measurement errors.  They degrade when a single
+observation dominates the total inverse-variance weight budget by a
+factor $\gtrsim 10^8$ -- catastrophic cancellation in the weighted
+moment sums, which afflicts the fast NFFT-based summations earlier
+than direct summations -- and this condition is the practical meaning
+of the ``pathological cases'' caveat in the abstract.
+The floor is well below any astrophysically relevant amplitude
+threshold, so polynomial-rooting error does not limit FTP at the
+values of $H$ considered in Table~\ref{tab:hvsaccuracy}.
 
 \begin{figure*}
 \centering
@@ -856,7 +890,7 @@ Detached EB and Planet transit have visually overlapping curves
 (both driven by sharp ingress/egress discontinuities); the dashed
 green line distinguishes the EB.
 (b) Empirical period-recovery rate as a function of peak-to-peak
-signal-to-noise ratio for sparse $N_{\rm obs} = 100$ synthetic
+signal-to-noise ratio for densely-sampled $N_{\rm obs} = 100$ synthetic
 light curves (30 trials per cell), comparing FTP at
 $H = H_{95\%}$ (solid) with the Lomb--Scargle-equivalent FTP at
 $H{=}1$ (dotted) for the same five canonical templates.  FTP at
@@ -914,13 +948,14 @@ cover one full-width of a periodogram peak.  Because the peak width
 scales roughly as $\delta f_{\mathrm{peak}}\propto 1/H$
 (Section \ref{sec:compreqs}), the value of \texttt{samples\_per\_peak}
 must scale at least linearly with $H$ to avoid under-sampling the
-peaks.  In particular, the conventional default
-\texttt{samples\_per\_peak}~$=10$, which is a reasonable choice for
-near-sinusoidal ($H=1$) templates, implies only $\sim 1$ trial
-frequency per peak at $H=10$; an empirical inspection at $H=7$ shows
-that peaks are only about three samples wide on the
-\texttt{samples\_per\_peak}~$=10$ grid, so the true frequency can be
-missed in favor of a noise peak.  For the sharper templates studied
+peaks.  In particular, the shipped default
+\texttt{samples\_per\_peak}~$=5$ is a reasonable choice only for
+near-sinusoidal ($H=1$) templates: it implies under one trial
+frequency per peak at $H=10$, and even a denser
+\texttt{samples\_per\_peak}~$=10$ grid -- the conventional
+Lomb--Scargle choice -- leaves peaks only about three samples wide in
+an empirical inspection at $H=7$, so on the default grid the true
+frequency can be missed in favor of a noise peak.  For the sharper templates studied
 in Section \ref{sec:choiceH} -- in particular the trapezoidal-transit
 and detached-EB shapes, which require $H_{95\%}=12$ in
 Table \ref{tab:hvsaccuracy} -- \texttt{samples\_per\_peak}~$\gtrsim 30$
@@ -995,8 +1030,11 @@ box-shaped match to the smooth EB profile.
 \end{figure*}
 
 For weak signals or signals folded at the incorrect trial period, the
-$V$ surface in $\theta_2$ admits up to $6H{-}1$ stationary points
-(the degree of the polynomial in Equation~\ref{eq:finalpoly}), so
+$V$ surface in $\theta_2$ admits up to $6H{-}2$ stationary points with
+$YM \neq 0$ (the degree bound of the polynomial in
+Equation~\ref{eq:finalpoly}; up to $2H$ further stationary points
+where $YM = 0$ are zero-power minima, factored out of
+Equation~\ref{eq:finalpoly}), so
 non-linear optimization algorithms can fail to find the global minimum
 and instead lock onto one of the spurious local extrema.  The FTP
 sidesteps this entirely by enumerating all roots of
@@ -1219,6 +1257,25 @@ multi-band photometry of RR\,Lyrae, with the Gaia DR3 RR\,Lyrae catalogue \citep
     Joel Hartman and GB acknowledge support from NASA grant NNX17AB61G. JTV is supported by the University of Washington eScience Institute, with funding from the Alfred P. Sloan Foundation, the Gordon and Betty Moore Foundation, and the Washington Research Foundation.
 \end{acknowledgements}
 
+\section*{Data availability}
+The \texttt{ftperiodogram} code implementing the fast template
+periodogram is openly available at
+\url{https://github.com/PrincetonUniversity/FastTemplatePeriodogram}.
+The manuscript sources, the figure-generation scripts, and the saved
+results underlying every figure and table in this article are
+available at
+\url{https://github.com/PrincetonUniversity/FastTemplatePeriodogramPaper}.
+The simulation-experiment artifacts -- per-run \texttt{results.json}
+files with their full configuration blocks and random seeds -- are
+versioned under \texttt{experiments/} in the code repository, so every
+quoted number regenerates from a committed script and recorded seed.
+The real Zwicky Transient Facility light curves used for the empirical
+cadence and photometric-error models were retrieved from the public
+IRSA ZTF light-curve service (\texttt{nph\_light\_curves}, DR22-era
+release); the cached light curves, including per-record query
+provenance and the observed MJD span, are stored alongside the
+experiment code.
+
 \bibliographystyle{apj}
 \bibliography{refs}
 
@@ -1408,6 +1465,13 @@ The last step assumes $\eith\ne 0$, which holds since
 $\eith = e^{i\theta_2}$ lies on the unit circle for all real
 $\theta_2$.  Equation~\ref{eq:appfinalpoly} is the polynomial
 root-finding condition of Equation~\ref{eq:finalpoly} in the body.
+Although the nominal degree of Equation~\ref{eq:appfinalpoly} is
+$6H-1$ ($\deg MM' = 4H$, $\deg \partial(YM') = 2H-1$), the
+degree-$(6H{-}1)$ terms cancel identically: writing $ym$ and $mm$ for
+the leading coefficients of $YM'$ and $MM'$, the leading coefficient
+of $2\,MM'\,\partial(YM')$ is $2\,(2H)\,mm\,ym$ and that of
+$YM'\,\partial(MM')$ is $(4H)\,ym\,mm$ (a consequence of
+$\deg MM' = 2 \deg YM'$), so the true degree is at most $6H-2$.
 
 \section{Shared-phase multi-band template periodogram}\label{sec:shphmult}
 
@@ -1491,9 +1555,6 @@ For $YM' = \eith^H YM$, we merely compute $\eith^H\YMhat^{(k)}$ for each band, t
 After computing the polynomials $MM'$ and $YM'$, the polynomial in Equation \ref{eq:finalpoly} can be computed quickly and the following steps for finding the optimal model parameters is the same as in the single band case.
 
 The computational complexity of this model scales as $\bigO(KN_fH\log N_fH + N_fH^3)$ where $K$ is the number of filters. Since the polynomial zero-finding step is the limiting computation in most real-world applications, the multi-band template periodogram corresponding to the \cite{Sesar_etal_2016} model should not be significantly more computationally intensive than the single-band case.
-
-\section{Data availibility}
-The data underlying this article are available in the GitHub repository located at \href{https://github.com/PrincetonUniversity/FastTemplatePeriodogramPaper}{https://github.com/PrincetonUniversity/FastTemplatePeriodogramPaper}.
 
 \end{appendix}
 
