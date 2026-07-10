@@ -685,21 +685,40 @@ Other multi-band extensions of the template periodogram are provided in Appendix
 
 \subsection{Computational requirements}\label{sec:compreqs}
 
-For a given number of harmonics $H$, the task of deriving
-the polynomial given in Equation \ref{eq:finalpoly} requires $\bigO(H^2)$ computations,
-and finding the roots of this polynomial requires $\bigO(H^3)$ computations. The degree of the final
-polynomial is at most $6H - 2$.
+For a given number of harmonics $H$, assembling the stationarity
+polynomial of Equation \ref{eq:finalpoly}---whose degree is at most
+$6H-2$---from the trigonometric sums requires $\bigO(H^2)$ operations.
+The reference Python implementation (\texttt{method='eigvals'}) locates the
+optimum by rooting this polynomial via its companion-matrix eigenvalues
+(\S\ref{sec:derivations}), at a cost of $\bigO(H^3)$ per trial frequency.
+The default maximiser of the accompanying implementation
+(\texttt{method='scan'}) instead evaluates the phase objective directly on
+$\bigO(H)$ trial phases and Newton-polishes the bracketed maxima, so that the
+coefficient \emph{assembly}---not root-finding---sets the per-frequency cost at
+$\bigO(H^2)$; only at the frequencies where the template-variance polynomial
+$|MM|$ nearly vanishes on the unit circle (rank-deficient or phase-clustered
+sampling) does it fall back to the exact $\bigO(H^3)$ root path and keep the
+better of the two solutions, so the $\bigO(H^2)$ saving is opportunistic rather
+than guaranteed (Appendix~\ref{sec:shphmult} develops the same construction for
+the multi-band modes). The realised per-frequency scaling therefore interpolates
+between $\bigO(H^2)$---the regime that holds throughout the practical harmonic
+range $H\lesssim 15$, where the fallback rarely fires---and the reference
+$\bigO(H^3)$ as the fallback incidence grows (at very high $H$, or on sparse or
+otherwise deep-$|MM|$ sampling).
 
-When considering $N_f$ trial frequencies, the polynomial computation and root-finding
-step scales as $\bigO(H^3N_f)$. The computation of the sums
+When considering $N_f$ trial frequencies, the per-frequency maximisation
+therefore scales as $\bigO(H^2N_f)$ on the default path
+($\bigO(H^3N_f)$ on the reference path), while the computation of the sums
 (Equations \ref{eq:CCdef} -- \ref{eq:YSdef}) scales as $\bigO(HN_f\log HN_f)$.
 
 
-Therefore, the entire template periodogram scales as
+Therefore, on its default scan path, the entire template periodogram scales as
 
 \begin{equation}\label{eq:bigO}
-\bigO(HN_f \log HN_f) \;+\; \bigO(H^3N_f).
+\bigO(HN_f \log HN_f) \;+\; \bigO(H^2N_f),
 \end{equation}
+
+with the reference root-finding path replacing the second term by $\bigO(H^3N_f)$.
 
 We have written the bound as the sum of two independent
 contributions in order to emphasize that the two terms are
@@ -708,8 +727,8 @@ regimes.  The first term, from the non-equispaced fast Fourier
 transforms used to compute the $C$ and $S$ sums of
 Equations \ref{eq:CCdef}--\ref{eq:YSdef}, dominates at low
 $H$ and large $N_f$ -- the regime typical of large surveys with
-near-sinusoidal templates.  The second term, from constructing
-and rooting the degree-$({\le}\,6H{-}2)$ polynomial of
+near-sinusoidal templates.  The second term, from assembling and
+maximising over the degree-$({\le}\,6H{-}2)$ polynomial of
 Equation \ref{eq:finalpoly} at every trial frequency, dominates
 at moderate-to-high $H$ and moderate $N_f$ -- the regime typical
 of sharply peaked templates such as eclipsing-binary or
@@ -720,24 +739,35 @@ However, an important consideration is that the peak width scales inversely with
 The computational scaling factoring in an extra power of $H$ is therefore
 
 \begin{equation}
-\bigO(H^2N_f \log HN_f + H^4N_f).
+\bigO(H^2N_f \log HN_f + H^3N_f)
 \end{equation}
+
+on the default path (again with $H^3N_f \to H^4N_f$ on the reference
+root-finding path).
 
 
 \begin{figure}
     \centering
     \includegraphics[width=0.5\textwidth]{plots/timing_vs_nharm.pdf}
-    \caption{\label{fig:timingnharm} Computation time of FTP scaled by $NH$ for
-            different numbers of harmonics. For $H\lesssim 3$, FTP scales
-            sublinearly in $H$ (possibly due to a constant overhead per
-            trial frequency, independent of $H$). When $3 \lesssim H \lesssim 11$,
-            FTP scales approximately linearly in $H$, and when $H \gtrsim 11$
-            FTP approaches the $\bigO(H^3)$ scaling limit.}
+    \caption{\label{fig:timingnharm} Wall time per trial frequency versus the
+            number of harmonics $H$ for the default scan+polish maximiser
+            (\texttt{method='scan'}, blue) and the reference polynomial-root
+            implementation (\texttt{method='eigvals'}, red), timed on identical
+            well-conditioned single-band data ($N_{\rm obs}=200$, $N_f=6000$).
+            The default path is a measured factor of $25$--$35$ faster across
+            all $H$. At low $H$ both paths are dominated by the shared
+            $\bigO(HN_f\log HN_f)$ NFFT summations and rise only mildly with $H$;
+            by $H\gtrsim 8$ the per-frequency maximiser takes over, and the
+            reference cost steepens toward its $\bigO(H^3)$ root-finding
+            asymptote while the scan tracks $\bigO(H^2)$ (dashed segments; the
+            measured $8\!\to\!12$ log--log slopes are ${\approx}2.3$ and
+            ${\approx}1.9$ respectively).}
 \end{figure}
 
 For a fixed number of harmonics $H$, the template periodogram scales as
 $\bigO(N_f\log N_f)$. However, for a constant number of trial frequencies $N_f$,
-the template algorithm scales as $\bigO(H^3)$, and computational resources
+the per-frequency cost grows as $\bigO(H^2)$ on the default scan path
+($\bigO(H^3)$ on the reference root-finding path), and computational resources
 alone limit $H$ to reasonably small numbers $H\lesssim15$ (see Figure \ref{fig:timingnharm}).
 
 This practical ceiling has a direct bearing on the algorithm's scope of
@@ -751,7 +781,8 @@ $H \approx 12$ to reach $95\%$ $L^2$ fidelity and $H \approx 21$ to
 reach $99\%$ (Table~\ref{tab:hvsaccuracy}).  FTP therefore \emph{can}
 handle transit- and eclipse-shaped signals, but at the upper end of
 computationally tractable $H$ values, and at a cost that grows as
-$H^3 N_f$.  Real limb-darkened transits are smoother than the
+$H^2 N_f$ on the default path ($H^3 N_f$ on the reference).  Real
+limb-darkened transits are smoother than the
 trapezoidal idealisation---they have finite, gently-curved
 ingress/egress and consequently Fourier coefficients that decay
 faster than the trapezoid's $1/n^2$ tail---so the $H$ requirements
@@ -1059,22 +1090,32 @@ periodogram for known, non-sinusoidal signal shapes.
     \centering
     \includegraphics[width=0.45\textwidth]{plots/timing_vs_ndata.pdf}
     \includegraphics[width=0.45\textwidth]{plots/timing_vs_ndata_const_freq.pdf}
-    \caption{\label{fig:timingndata} Computation time of FTP compared with alternative techniques
-             that use non-linear optimization at each trial frequency. \emph{Left}: timing for the
-             case when $N_f = ~12 N_{\rm obs}$, i.e. the cadence of the observations is constant.
-             \emph{Right}: timing for the case when $N_f$ is fixed, i.e. the baseline of the observations
-             are constant. Non-linear optimization techniques scale as $\bigO(N_f N_{\rm obs})$ while
-             the FTP scales as $\bigO(HN_f\log HN_f + N_fH^3)$, where $H$ is the number of harmonics
-             needed to approximate the template.}
+    \caption{\label{fig:timingndata} Computation time of the FTP (default scan
+             path, \texttt{method='scan'}, blue; reference root-finding path,
+             \texttt{method='eigvals'}, red) compared with full non-linear
+             optimization at each trial frequency (grey; $10$ random phase
+             restarts per frequency). \emph{Left}: timing for
+             the case when $N_f = 12 N_{\rm obs}$, i.e. the cadence of the
+             observations is constant. \emph{Right}: timing for the case when
+             $N_f$ is fixed, i.e. the baseline of the observations is constant.
+             Non-linear optimization scales as $\bigO(N_f N_{\rm obs})$ (dotted
+             extrapolation beyond the largest tractable point) while the FTP
+             scales as $\bigO(HN_f\log HN_f + N_fH^2)$ on its default path
+             ($N_fH^2 \to N_fH^3$ on the reference path), independent of
+             $N_{\rm obs}$; $H$ is the number of harmonics needed to approximate
+             the template. In the constant-baseline panel the scan cost rises
+             toward the reference at the sparsest $N_{\rm obs}$, where the
+             rank-deficient sampling triggers the exact-root fallback.}
 
 \end{figure*}
 
-FTP scales asymptotically as $\bigO(N_fH\log N_fH)$ with respect to the number of trial frequencies,
-$N_f$ and as $\bigO(N_fH^3)$ with respect to the number of harmonics in which the template is expanded, $H$.
+On its default scan path the FTP scales asymptotically as $\bigO(N_fH\log N_fH)$ with respect to the number of trial frequencies,
+$N_f$, and as $\bigO(N_fH^2)$ with respect to the number of harmonics in which the template is expanded, $H$
+(the reference root-finding path replaces $N_fH^2$ by $N_fH^3$).
 For a given resolving power, however, there is an additional factor of $H$ in each of these terms due to the
 number of trial frequencies necessary to resolve a periodogram peak being proportional to $H$.
-However, for reasonable cases ($N_f \lesssim 10^{120}$ when $H=5$) the computation time is dominated by
-computing polynomial coefficients and root finding, both of which scale linearly in $N_f$.
+For all reasonable $N_f$ the computation time is dominated by computing the polynomial coefficients and the
+per-frequency phase maximisation, both of which scale linearly in $N_f$.
 
 The number of trial frequencies needed for finding astrophysical signals in a typical photometric time series is
 
@@ -1085,17 +1126,21 @@ The number of trial frequencies needed for finding astrophysical signals in a ty
 \noindent where $\alpha$ represents the ``oversampling factor,'' $\Delta f_{\rm peak} / \Delta f$, where $\Delta f_{\rm peak} \sim 1/{\rm baseline}$ is
 the typical width of a peak in the periodogram and $\Delta f$ is the frequency spacing of the periodogram.
 
-Extrapolating from the timing of a test case (500 observations, 5 harmonics, 15,000 trial frequencies), the summations
-account for approximately 5\% of the computation time when $N_f \sim 10^6$. If polynomial computations and
-root-finding can be improved to the point where they no longer dominate the computation time, this would provide an
-order of magnitude speedup over the current implementation.
+The per-frequency phase maximisation dominates the run time in this regime, which is precisely why replacing the
+reference polynomial root-finding with the scan+polish maximiser---now the default in the accompanying
+implementation---is worthwhile. On well-conditioned single-band data the default path is a measured factor of
+$25$--$35$ faster than the reference Python implementation (\texttt{method='eigvals'}), and this factor is
+grid-stable in $N_f$: at $H=8$ we measure ${\approx}32\times$, ${\approx}29\times$ and ${\approx}28\times$ at $N_f=2{,}000$, $8{,}000$ and
+$20{,}000$ respectively (Figure~\ref{fig:timingnharm}).
 
-Figure \ref{fig:timingndata} compares the timing of the FTP with that of previous methods that employ
-non-linear optimization. For the case when $N_f\propto N_{\rm obs}$, FTP achieves a factor of 3 speedup for even
-the smallest test case (15 datapoints), while for larger cases ($N\sim10^4$) FTP offers 2-3 orders of magnitude
-speed improvement. For the constant baseline case, FTP is a factor of $\sim 2$ faster for the smallest test case
-and a factor of $\sim 20$ faster for $N_{\rm obs}\sim 10^4$. Future improvements to the FTP implementation
-could further improve speedups by 1-2 orders of magnitude over non-linear optimization.
+Figure \ref{fig:timingndata} compares the timing of the FTP (default scan path) with that of previous methods that
+employ non-linear optimization at each trial frequency. Over the range where the non-linear solver remains tractable,
+the default FTP is already a measured factor of ${\sim}14$--$15$ faster at the sparsest, most rank-deficient test case
+($15$ datapoints, where the scan itself falls back to the exact root path) and ${\sim}480$--$500$ faster by
+$N_{\rm obs}=250$, in both the constant-cadence ($N_f\propto N_{\rm obs}$) and constant-baseline ($N_f$ fixed)
+regimes. Because non-linear optimization scales as $\bigO(N_f N_{\rm obs})$ while the FTP's per-frequency cost is
+independent of $N_{\rm obs}$, this advantage grows without bound as $N_{\rm obs}$ increases (dotted extrapolation in
+Figure~\ref{fig:timingndata}).
 
 
 % The 10^120 figure comes from the fact that for a test case (Ndata = 500, H = 5, Nf = 14917),
@@ -1140,14 +1185,13 @@ to handle non-sinusoidal signals that can be expressed in terms of
 a fixed truncated Fourier series with a reasonably small number of harmonics
 ($H\lesssim 10$).
 
-The fast template periodogram (FTP) asymptotically scales as
-$\bigO(N_fH^2\log N_fH^2 + N_fH^4)$, while previous template fitting algorithms
-such as the one used in the \texttt{gatspy} library \citep{gatspy},
-scale as $\bigO(N_fN_{\rm obs})$. However, the FTP effectively
-scales as $\bigO(N_fH^4)$, since the time needed to compute polynomial
-coefficients and perform zero-finding dominates the computational time
-for all practical cases ($N_f \lesssim 10^{120}$).
-The $H^4$ scaling effectively restricts templates to those that are
+On its default scan path the fast template periodogram (FTP) asymptotically scales as
+$\bigO(N_fH^2\log HN_f + N_fH^3)$ (including the extra factor of $H$ needed to resolve a peak),
+while previous template fitting algorithms such as the one used in the \texttt{gatspy} library
+\citep{gatspy} scale as $\bigO(N_fN_{\rm obs})$. The FTP's cost is set by computing the polynomial
+coefficients and the per-frequency phase maximisation, and is independent of $N_{\rm obs}$; the
+reference root-finding path instead carries an $N_fH^4$ term.
+The remaining $H^3$ scaling restricts templates to those that are
 sufficiently smooth to be explained by a small number of Fourier terms.
 
 FTP also improves the accuracy of previous template fitting algorithms,
@@ -1160,9 +1204,11 @@ GitHub.\footnote{\url{https://github.com/PrincetonUniversity/FastTemplatePeriodo
 The current implementation could likely be improved by:
 
 \begin{enumerate}
-    \item Improving the speed of the polynomial
-          coefficient calculations and the zero-finding steps. This could potentially yield
-          a speedup of $\sim1-2$ orders of magnitude over the current implementation.
+    \item Further optimising the polynomial coefficient assembly and the
+          scan+polish maximisation---for example by moving the per-chunk
+          assembly onto vectorised or compiled kernels---beyond the measured
+          factor of ${\sim}25$--$35$ that the scan+polish default already gains
+          over the reference root-finding path.
     \item Exploiting the embarassingly parallel nature of the FTP using GPU's.
     \item Searching over a small library of templates with independent
           amplitudes and phases per template, rather than a single fixed
@@ -1176,15 +1222,12 @@ The current implementation could likely be improved by:
           training set is itself an active line of work.
 \end{enumerate}
 
-For a constant baseline, the current implementation improves existing methods by factors
-of a $\sim$few for lightcurves with $\bigO(100)$ observations, and by an order of magnitude
-or more for objects with more than 1,000 observations. While template fitting remains
-challenging for the largest time-domain surveys at present, the polynomial computations
-themselves admit a further factor of $\sim 25\text{--}100$ speedup, which would bring the FTP to
-1--3 orders of magnitude faster than alternative techniques. This work presents the mathematical
-shortcut that, combined with a more efficient implementation, will make template fitting
-a fast and valuable tool for detecting non-sinusoidal periodic signals of specified shape
-in large time-series datasets.
+For a constant baseline, the default implementation improves on full non-linear optimization by
+more than two orders of magnitude ($\gtrsim 480\times$ measured by $N_{\rm obs}=250$) once the sampling
+is well enough conditioned that the scan avoids its exact-root fallback, with the advantage growing as
+$N_{\rm obs}$ increases. This work presents the mathematical shortcut that, realised through the
+scan+polish maximiser, makes template fitting a fast and valuable tool for detecting non-sinusoidal
+periodic signals of specified shape in large time-series datasets.
 
 A real-survey demonstration of the multi-band FTP against
 single-band Lomb--Scargle, multi-band Lomb--Scargle
@@ -1632,7 +1675,7 @@ whose degree is at most $8HK-2$: each term's nominal leading coefficient at degr
 \subsection{Computational cost across the hierarchy}
 \label{app:mbcost}
 
-For every mode the per-band NFFT summations cost $\bigO(KN_fH\log N_fH)$ over the full frequency grid, independent of the sharing mode. The per-frequency phase maximisation is where the modes differ. The coupled-but-cheap members \texttt{floating\_offsets} and \texttt{sesar} each assemble a single band-combined polynomial of degree at most $6H-2$ (Equation~\ref{eq:foaverage} and the \texttt{sesar} construction of Section~\ref{app:sesarmode}) and solve it at the single-band cost $\bigO(H^3)$ per frequency, so their total cost $\bigO(KN_fH\log N_fH + N_fH^3)$ is no larger than a single-band periodogram's; \texttt{independent} runs $K$ such solves, at $\bigO(KN_fH^3)$. Only \texttt{shared\_phase} is genuinely more expensive: its degree-$(8HK-2)$ stationarity polynomial $G$ costs $\bigO((HK)^3)$ per frequency. The implementation accompanying this paper replaces that root-finding with a direct scan of $F(\eith)$ on $\bigO(HK)$ trial phases, forming and solving $G$ only at those frequencies where \emph{some} band's template-variance polynomial $|MM^{(k)}|$ nearly vanishes on the unit circle (its minimum over the circle falling below a fixed fraction of its maximum). This removes the $\bigO((HK)^3)$ cost away from such deep-$|MM|$ dips, but not at them, where the exact root path is still run and the better of the two solutions kept, so the saving is opportunistic rather than guaranteed. Since the polynomial step dominates in most applications, the multi-band template periodogram in the shared-amplitude modes is not significantly more computationally intensive than the single-band case.
+For every mode the per-band NFFT summations cost $\bigO(KN_fH\log N_fH)$ over the full frequency grid, independent of the sharing mode. The per-frequency phase maximisation is where the modes differ. The coupled-but-cheap members \texttt{floating\_offsets} and \texttt{sesar} each assemble a single band-combined polynomial of degree at most $6H-2$ (Equation~\ref{eq:foaverage} and the \texttt{sesar} construction of Section~\ref{app:sesarmode}) and solve it at the single-band cost $\bigO(H^3)$ per frequency, so their total cost $\bigO(KN_fH\log N_fH + N_fH^3)$ is no larger than a single-band periodogram's; \texttt{independent} runs $K$ such solves, at $\bigO(KN_fH^3)$. Only \texttt{shared\_phase} is genuinely more expensive: its degree-$(8HK-2)$ stationarity polynomial $G$ costs $\bigO((HK)^3)$ per frequency. The implementation accompanying this paper replaces that root-finding with a direct scan of $F(\eith)$ on $\bigO(HK)$ trial phases, forming and solving $G$ only at those frequencies where \emph{some} band's template-variance polynomial $|MM^{(k)}|$ nearly vanishes on the unit circle (its minimum over the circle falling below a fixed fraction of its maximum). This removes the $\bigO((HK)^3)$ cost away from such deep-$|MM|$ dips, but not at them, where the exact root path is still run and the better of the two solutions kept, so the saving is opportunistic rather than guaranteed. The realised speedup is therefore strongly configuration-dependent: on well-conditioned dense-grid \texttt{shared\_phase} data ($K=2$) we measure the scan to be $1.3\times$ faster than the reference root path at $H=3$ and $5.4\times$ at $H=8$, but on sparse or otherwise deep-$|MM|$ sampling, where the fallback fires at most frequencies, the cost approaches that of the reference and the speedup collapses toward $1\times$. Since the polynomial step dominates in most applications, the multi-band template periodogram in the shared-amplitude modes is not significantly more computationally intensive than the single-band case.
 
 \end{appendix}
 
