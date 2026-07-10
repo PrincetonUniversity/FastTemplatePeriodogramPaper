@@ -1170,7 +1170,7 @@ The current implementation could likely be improved by:
           signal class is heterogeneous (e.g.\ a mixture of RR\,Lyrae
           subtypes); the polynomial-root formulation generalises to the
           shared-frequency multi-template setting analogously to the
-          shared-phase multi-band extension of
+          multi-band extension of
           Appendix~\ref{sec:shphmult}, and the principled construction
           of a small, representative template library from a labelled
           training set is itself an active line of work.
@@ -1473,11 +1473,46 @@ of $2\,MM'\,\partial(YM')$ is $2\,(2H)\,mm\,ym$ and that of
 $YM'\,\partial(MM')$ is $(4H)\,ym\,mm$ (a consequence of
 $\deg MM' = 2 \deg YM'$), so the true degree is at most $6H-2$.
 
-\section{Shared-phase multi-band template periodogram}\label{sec:shphmult}
+\section{Multi-band template periodograms and the sharing hierarchy}\label{sec:shphmult}
 
-We derive a multi-band extension for the template periodogram for data taken in $K$ filters, with $N_k$ observations in the $k$-th filter. We use the same model as the one described in \cite{Sesar_etal_2016} in order to illustrate the applicability of the template periodogram to more sophisticated scenarios.
+The single-band template periodogram extends to observations in $K$ filters ($N_k$ observations in the $k$-th filter, the $i$-th of which is denoted $\yk_i$) as a family of models that differ in which of the template's amplitude, phase, and offset are held common across the bands. We fit a periodic, multi-band template $\Mt = (\Mtk[1], \Mtk[2], ..., \Mtk[K]): [0, 2\pi)\rightarrow \mathbb{R}^K$ to all observations, and label the members of the resulting \emph{sharing hierarchy} by their names in the accompanying implementation (Table~\ref{tab:sharingmodes}). Freeing more parameters per band increases the model's flexibility at the price of a larger per-frequency solve. The three modes that retain a per-band offset (\texttt{independent}, \texttt{shared\_phase}, \texttt{floating\_offsets}) measure signal power against the per-band-centred variance $\sum_k \Wtk YY^{(k)}$, whereas the fully shared \texttt{sesar} model centres on the global mean; every member reduces to the single-band periodogram of Appendix~\ref{app:fullderivation} at $K=1$. The multi-band experiments in this paper use \texttt{floating\_offsets} (shared amplitude and phase, per-band free offset), the default mode, which we derive in Section~\ref{app:floatingoffsets} after the fully shared model.
 
-The $i$-th observation in the $k$-th filter is denoted $\yk_i$. We wish to fit a periodic, multi-band template $\Mt = (\Mtk[1], \Mtk[2], ..., \Mtk[K]): [0, 2\pi)\rightarrow \mathbb{R}^K$ to all observations. We assume the same model used by \cite{Sesar_etal_2016}, which assumes the relative amplitudes, phase shifts, and offsets are shared across bands:
+\begin{table*}
+\centering
+\caption{\label{tab:sharingmodes}
+Members of the multi-band sharing hierarchy, labelled by their name in the
+accompanying implementation. Each mode fixes some of the template's
+amplitude ($\theta_1$), phase ($\theta_2$), and offset ($\theta_3$) across
+the $K$ bands and frees the rest per band. $V_0$ is the reference variance
+that normalises the power (Equation~\ref{eq:Pofomega}); $\Wtk = \sum_i \wk_i$
+is the fraction of the total inverse-variance weight in band $k$
+($\sum_k \Wtk = 1$), and $\ybar$ is the global weighted mean (computed on the $\lk$-subtracted data for \texttt{sesar}). The final
+column is the per-frequency cost of the phase maximisation, on top of the
+$\bigO(KN_fH\log N_fH)$ NFFT summations that are common to every mode ($H$
+is the harmonic order). All modes coincide with the single-band periodogram
+at $K=1$.}
+\footnotesize
+\begin{tabular}{lllll}
+\hline\hline
+Mode (\texttt{code}) & Shared across bands & Free per band & Reference variance $V_0$ & Root cost / frequency \\
+\hline
+\texttt{independent}                    & (nothing)                                  & $\theta_1,\theta_2,\theta_3$ & $\sum_k \Wtk\, YY^{(k)}$          & $\bigO(KH^3)$ \\
+\texttt{shared\_phase}                  & $\theta_2$                                 & $\theta_1,\theta_3$          & $\sum_k \Wtk\, YY^{(k)}$          & $\bigO((HK)^3)$ \\
+\texttt{floating\_offsets}$^{\dagger}$  & $\theta_1,\theta_2$                        & $\theta_3$                   & $\sum_k \Wtk\, YY^{(k)}$          & $\bigO(H^3)$ \\
+\texttt{sesar}                          & $\theta_1,\theta_2,\theta_3$ (fixed $\lk$) & ---                          & $\sum_{k,i}\wk_i(\yk_i-\lk-\ybar)^2$  & $\bigO(H^3)$ \\
+\hline
+\end{tabular}
+\\[3pt]
+{\raggedright\footnotesize $^{\dagger}$ Default mode used for the multi-band
+experiments in this paper. \texttt{independent} is the per-band template
+analogue of the \cite{Vanderplas+Ivezic_2015} multi-band periodogram;
+\texttt{sesar} is the model of \cite{Sesar_etal_2016}.\par}
+\end{table*}
+
+\subsection{The fully shared model (\texttt{sesar})}
+\label{app:sesarmode}
+
+In the model of \cite{Sesar_etal_2016} the amplitude, phase, and offset are all shared across the bands, up to a fixed, known per-band offset $\lk$:
 
 \begin{equation}
 \yhk(t;\theta) = \theta_1\Mtk(\omega t - \theta_2) + \theta_3 + \lk
@@ -1554,7 +1589,50 @@ For $YM' = \eith^H YM$, we merely compute $\eith^H\YMhat^{(k)}$ for each band, t
 
 After computing the polynomials $MM'$ and $YM'$, the polynomial in Equation \ref{eq:finalpoly} can be computed quickly and the following steps for finding the optimal model parameters is the same as in the single band case.
 
-The computational complexity of this model scales as $\bigO(KN_fH\log N_fH + N_fH^3)$ where $K$ is the number of filters. Since the polynomial zero-finding step is the limiting computation in most real-world applications, the multi-band template periodogram corresponding to the \cite{Sesar_etal_2016} model should not be significantly more computationally intensive than the single-band case.
+\subsection{Floating per-band offsets (\texttt{floating\_offsets})}
+\label{app:floatingoffsets}
+
+The mode used for all of the multi-band experiments in this paper keeps the shared amplitude $\theta_1$ and phase $\theta_2$ of the \texttt{sesar} model but lets each band carry its own free offset $\theta_3^{(k)}$:
+\begin{equation}
+\yhk(t;\theta) = \theta_1\Mtk(\omega t - \theta_2) + \theta_3^{(k)}.
+\end{equation}
+Writing $V = \sum_k \Wtk V_k$ as before, the offset stationarity condition now acts on each band \emph{separately},
+\begin{equation}
+0 = \frac{1}{\Wtk}\frac{\partial V}{\partial\theta_3^{(k)}} = \yb - \theta_1\Mbk - \theta_3^{(k)},
+\end{equation}
+so the optimal offset $\theta_3^{(k)} = \yb - \theta_1\Mbk$ centres band $k$ on its \emph{own} weighted mean $\yb$. Substituting back, band $k$'s contribution is exactly the single-band, self-centred residual, and $V$ separates into a weighted average of single-band forms,
+\begin{equation}
+V = \sum_{k=1}^K \Wtk\left(YY^{(k)} - 2\theta_1\YMh + \theta_1^2\MMh\right) = YY' - 2\theta_1 YM' + \theta_1^2 MM',
+\end{equation}
+where $\YMh$, $\MMh$, and $YY^{(k)}$ are the ordinary single-band quantities of band $k$, each computed about that band's own weighted mean, and the primed band-combined quantities are the \emph{plain} $\Wtk$-weighted averages
+\begin{equation}
+\label{eq:foaverage}
+YM' = \sum_{k=1}^K \Wtk\,\YMh, \qquad MM' = \sum_{k=1}^K \Wtk\,\MMh, \qquad YY' = \sum_{k=1}^K \Wtk\,YY^{(k)}.
+\end{equation}
+Because every band is already centred on its own mean, no global re-centring is required---unlike the \texttt{sesar} model (Section~\ref{app:sesarmode}), whose single shared offset forces the between-band $\bar{y}\Mbar$ and $\Mbar^2$ corrections. Minimising over the shared amplitude gives $\theta_1 = YM'/MM'$ and
+\begin{equation}
+P(\omega) = 1 - \frac{V}{YY'} = \frac{(YM')^2}{YY'\,MM'},
+\end{equation}
+the single-band closed form of Equation~\ref{eq:Pofomega} with the primed quantities in place of $YM$, $MM$, and $YY$. Since $YM'$ and $MM'$ are the same weighted averages of the per-band coefficient vectors, they are polynomials in $\eith$ of the same degrees ($2H$ and $4H$) as a single band, so the maximisation over $\theta_2$ uses the identical degree-$(6H-2)$ root condition of Equation~\ref{eq:appfinalpoly}. Floating per-band offsets therefore cost essentially one single-band solve per frequency, independent of $K$ beyond the summations; at $K=1$ ($\Wtk=1$, $\yb=\ybar$) the mode collapses to the single-band periodogram.
+
+\subsection{Shared phase, per-band amplitude (\texttt{shared\_phase})}
+\label{app:sharedphase}
+
+Relaxing the shared amplitude of \texttt{floating\_offsets} yields the \texttt{shared\_phase} model: a single phase $\theta_2$ is common to all bands, but each band fits its own amplitude and offset. For a fixed shared phase every band fits independently, so the variance explained is a sum of the per-band single-band contributions,
+\begin{equation}
+F(\eith) = \sum_{k=1}^K \Wtk\,\frac{\left(YM^{(k)}(\eith)\right)^2}{MM^{(k)}(\eith)},
+\end{equation}
+and the power is $P(\omega) = \max_{\theta_2} F(\eith)/YY'$, normalised by the same per-band-centred variance $YY' = \sum_k \Wtk YY^{(k)}$ as \texttt{floating\_offsets}.
+The per-band amplitudes no longer collapse into a single band-combined polynomial. Clearing the common denominator $\prod_l\left(MM^{(l)}\right)^2$ (positive on the unit circle) gives the stationarity polynomial
+\begin{equation}
+G(\eith) = \sum_{k=1}^K \Wtk\, YM^{(k)}\, q_k \prod_{l\ne k}\left(MM^{(l)}\right)^2 = 0, \qquad q_k = 2\,MM^{(k)}\partial YM^{(k)} - \partial MM^{(k)}\,YM^{(k)},
+\end{equation}
+whose degree is at most $8HK-2$: each term's nominal leading coefficient at degree $8HK-1$ cancels identically, by the same top-term identity that reduces the single-band $q_k$. Its roots must be found explicitly, at a cost of $\bigO((HK)^3)$ per frequency---the only member of the hierarchy whose per-frequency cost grows with $K$ beyond the summations. Because the shared phase couples the bands, the per-band amplitudes cannot each be independently forced non-negative; this mode returns the power-maximising shared phase and its fitted per-band amplitudes.
+
+\subsection{Computational cost across the hierarchy}
+\label{app:mbcost}
+
+For every mode the per-band NFFT summations cost $\bigO(KN_fH\log N_fH)$ over the full frequency grid, independent of the sharing mode. The per-frequency phase maximisation is where the modes differ. The coupled-but-cheap members \texttt{floating\_offsets} and \texttt{sesar} each assemble a single band-combined polynomial of degree at most $6H-2$ (Equation~\ref{eq:foaverage} and the \texttt{sesar} construction of Section~\ref{app:sesarmode}) and solve it at the single-band cost $\bigO(H^3)$ per frequency, so their total cost $\bigO(KN_fH\log N_fH + N_fH^3)$ is no larger than a single-band periodogram's; \texttt{independent} runs $K$ such solves, at $\bigO(KN_fH^3)$. Only \texttt{shared\_phase} is genuinely more expensive: its degree-$(8HK-2)$ stationarity polynomial $G$ costs $\bigO((HK)^3)$ per frequency. The implementation accompanying this paper replaces that root-finding with a direct scan of $F(\eith)$ on $\bigO(HK)$ trial phases, forming and solving $G$ only at those frequencies where \emph{some} band's template-variance polynomial $|MM^{(k)}|$ nearly vanishes on the unit circle (its minimum over the circle falling below a fixed fraction of its maximum). This removes the $\bigO((HK)^3)$ cost away from such deep-$|MM|$ dips, but not at them, where the exact root path is still run and the better of the two solutions kept, so the saving is opportunistic rather than guaranteed. Since the polynomial step dominates in most applications, the multi-band template periodogram in the shared-amplitude modes is not significantly more computationally intensive than the single-band case.
 
 \end{appendix}
 
