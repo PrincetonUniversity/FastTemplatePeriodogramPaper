@@ -1214,11 +1214,11 @@ a maximum absolute difference of $1.2\times10^{-9}$ over all $3000$
 realizations, as they must -- a single-harmonic template spans the same
 linear space as a floating-mean sinusoid.  Second, the inflation from
 the non-linear phase family is modest and saturates almost immediately: the
-mean null maximum rises from $0.408$ at $H=1$ to $0.440$ at $H=3$, then
-$0.443$ at both $H=6$ and $H=12$, and the empirical ${\rm FAP}=0.01$
+mean null maximum rises from $0.407$ at $H=1$ to $0.440$ at $H=3$, then
+$0.442$ ($H=6$) and $0.443$ ($H=12$), and the empirical ${\rm FAP}=0.01$
 threshold rises from $0.535$ ($H=1$) to $0.551$, $0.551$, and $0.553$ at
 $H=3$, $6$, and $12$.  An $H=12$ template therefore costs less than $+0.02$
-in detection threshold at fixed false-alarm probability relative to
+in detection threshold at the calibrated ${\rm FAP}=0.01$ relative to
 Lomb--Scargle -- far below the cost of the $2H{+}1 = 25$ free coefficients
 of a multi-harmonic fit of the same order -- because the fixed template
 shape confines the maximisation to a one-parameter curve of phase shifts
@@ -1257,14 +1257,16 @@ from $0.422$ ($K{=}1$) to $0.467$ ($K{=}8$) and the ${\rm FAP}=0.01$ threshold
 from $0.540$ to $0.576$, while at that measured $K{=}8$ threshold a single
 template has ${\rm FAP} = 0.0030$, so the Bonferroni estimate
 ($8 \times 0.0030 = 0.024$) overstates the measured $0.010$ by a factor
-$2.4$.  This measured extra-trials cost is the right
+$2.4$.  This extra-trials cost is a shift of the null in power units and
+is not directly commensurate with a recovery \emph{rate}; the appropriate
 yardstick for the small, non-monotonic wobble of period-recovery rate with
 vocabulary size in the sparse-sampling recovery simulations (RRab-dominated
-universe; $768$ pooled sources per cell): the pooled rate at
+universe; $768$ pooled sources per cell) is the binomial sampling
+uncertainty: the pooled rate at
 $K = 1$, $2$, $4$, $8$ is $0.716$, $0.715$, $0.738$, $0.741$, with Wilson
 $95\%$ intervals $[0.683, 0.747]$, $[0.682, 0.746]$, $[0.706, 0.768]$,
-$[0.709, 0.771]$ -- a non-monotone range of $0.026$ with overlapping
-intervals, comparable to the extra-trials penalty and therefore not
+$[0.709, 0.771]$ -- a non-monotone range of $0.026$ with mutually
+overlapping intervals, and therefore not
 evidence of a vocabulary-quality effect at this sampling.
 
 Two caveats bound this calibration.  First, the null is calibrated at a
