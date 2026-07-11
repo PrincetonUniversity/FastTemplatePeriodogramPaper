@@ -1315,8 +1315,9 @@ dissimilarity itself, the orbit-minimized $L^2$ distance
 \end{equation}
 where ${\rm CC}(\Delta)$ is the circular cross-correlation of the two
 harmonic-coefficient sequences ($w_k = z^{(f)}_k \overline{z^{(g)}_k}$
-with $z_k = c_k - i s_k$) and the norm is scaled so that a unit-energy
-shape has $\Vert f \Vert = 1$.  The phase maximization is solved exactly
+with $z_k = c_k - i s_k$), normalised so that ${\rm CC}(0) = 1$ when
+$f = g$; under the plain $L^2([0,1])$ norm a unit-energy shape has
+$\Vert f \Vert^2 = 1/2$.  The phase maximization is solved exactly
 per pair: ${\rm CC}$ is a degree-$H$ trigonometric polynomial, evaluated
 on an alias-free oversampled FFT grid (size $\geq 8H+1$, rounded up to a
 power of two), after which every cyclic local maximum is polished by
@@ -1371,7 +1372,9 @@ any population used for evaluation.
 \emph{Template libraries.}
 Two empirical RR\,Lyrae libraries are used.  The \citet{Sesar_etal_2010}
 SDSS Stripe~82 templates contribute one library shape per (star, band)
-pair; the $g,r$ subset used here comprises $98$ shapes, nearly all RRab.
+pair; the full $ugriz$ set of $98$ shapes, nearly all RRab, is used as
+the library (the simulated observations themselves are in $g$ and $r$
+only).
 The \citet{Baeza-Villagra_etal_2025} DECam $griz$ templates contribute
 $136$ RRab and $144$ RRc stars; their $g,r$ subset comprises $560$
 shapes and is deliberately more morphologically diverse.  Library curves
@@ -1490,8 +1493,8 @@ the mismatched-library arm below.
 % ===================================================================
 \emph{Grid-resolution caveat.}
 The absolute sparse-regime rates above are \emph{lower bounds at the
-stated $10^4$-frequency production grid} for the $H = 8$ and binned
-methods.  A multi-harmonic peak has width ${\sim}\,{\rm Rayleigh}/H$, so
+stated $10^4$-frequency production grid} for every method except GLS,
+most strongly for the $H = 8$ and binned ones.  A multi-harmonic peak has width ${\sim}\,{\rm Rayleigh}/H$, so
 the production grid places only ${\approx}\,0.29$ points per $H = 8$
 peak width.  A paired convergence check re-scoring the identical seed-0
 sources on a $2\times10^4$-frequency grid ($4.56$ points per Rayleigh
@@ -1539,7 +1542,12 @@ are not significant.)  On the RRab$+$RRc universe of
 \citet{Baeza-Villagra_etal_2025} the same curve is $0.512$, $0.703$,
 $0.727$, $0.719$: the $K{=}1 \rightarrow 2$ jump of $+0.191$ is highly
 significant ($13$ vs.\ $62$ discordant, $p \approx 8\times10^{-9}$)
-and the curve is flat thereafter.  The two panels together give the
+and the curve is flat thereafter.  (One production detail: the greedy
+curves saturate their coverage at two to three templates, and beyond
+saturation the production driver pads the vocabulary to size $K$ by
+ascending library index rather than by the farthest-point rule of
+Section~\ref{sec:vocab}, so the greedy points beyond the knee are
+conservative; the knee itself, and all PAM points, are unaffected.)  The two panels together give the
 honest reading: \emph{vocabulary size matters when the target
 population is morphologically diverse} -- one medoid cannot serve both
 RRab and RRc -- \emph{and is a second-order effect for a
@@ -1606,7 +1614,7 @@ population, the supervised selector is the safer choice.
 A fourth arm replaces the synthetic noise model with the empirical ZTF
 error-versus-magnitude relation measured from the real light curves
 used for the cadence models of this paper's follow-up work; the
-empirical curve is a factor $1.4$--$3.5$ larger than the synthetic one
+empirical curve is a factor $1.3$--$3.5$ larger than the synthetic one
 over its measured range ($14.3 \leq m \leq 18.5$).  Recovery is
 essentially unchanged -- FTP(PAM) $0.215/0.918/0.988$ at $N = 4/8/12$
 versus $0.233/0.902/0.984$ pooled synthetic (this arm ran at $K = 4$;
@@ -2157,7 +2165,7 @@ The headline recovery criterion of Section~\ref{sec:simval} --
 $|P_{\rm rec}-P_{\rm true}|/P_{\rm true} < 0.01$, exact only -- has one
 known blind spot on this search band: a $\pm1$\,yr$^{-1}$ window beat
 displaces the frequency by only $|\Delta f| = 1/365.25$\,cyc\,day$^{-1}$,
-a fractional period error of at most $0.27\%$ for $f \geq
+a fractional period error of at most $0.28\%$ for $f \geq
 1$\,cyc\,day$^{-1}$, so the fractional criterion cannot distinguish a
 year beat from an exact recovery.  Every scored (method, cell) pair
 therefore persists its per-source recovered periods, and
@@ -2170,8 +2178,10 @@ member of a named alias set (harmonic multiples $P/2$, $2P$, $3P$ and
 the $\pm1$\,day$^{-1}$, $\pm1$\,yr$^{-1}$ window beats).
 
 Three facts emerge.  First, the headline is safe: year-beat
-contamination is at most one source per cell (and $\pm1$\,day$^{-1}$
-beats are entirely absent at $N \geq 8$), and the two scoring
+contamination is at most one source per cell at $N \geq 8$ and at most
+three in any $N = 4$ cell (GLS and MHLS, whose absolute rates there are
+lowest anyway), $\pm1$\,day$^{-1}$ beats are entirely absent at
+$N \geq 8$, and the two scoring
 conventions agree on the headline rates -- e.g.\ FTP (PAM) at $N = 8$
 is $689/768 = 0.897$ phase-coherent-exact versus $0.902$ under the
 fractional criterion.  Second, the FTP's sparse-regime failures are
