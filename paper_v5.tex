@@ -113,8 +113,9 @@ G.~\'A Bakos\altaffilmark{3,}\altaffilmark{4}}
     The non-linear optimization of the template fit at each frequency is recast as a polynomial
     zero-finding problem, where the coefficients of the polynomial can be computed efficiently with
     the non-equispaced fast Fourier transform. We show that our method, which uses truncated Fourier series to approximate templates,
-    is a factor of a few faster than existing algorithms for small problems ($N_{\rm obs}\lesssim 10$ observations) and
-    2 orders of magnitude faster for long base-line time series with $N_{\rm obs} \gtrsim 10^4$ observations.
+    is more than an order of magnitude faster than existing non-linear optimization algorithms even for the smallest problems tested
+    ($\approx 14\times$ at $N_{\rm obs} = 15$ observations) and more than two orders of magnitude faster ($\gtrsim 480\times$) by
+    $N_{\rm obs} = 250$, an advantage that grows without bound as $N_{\rm obs}$ increases.
     Signals with very sharp features (e.g.\ limb-darkened transits with brief ingress, sharp eclipses) require moderate-to-high harmonic orders ($H\gtrsim 20$) to be reproduced at the $99\%$ $L^2$ level (Table~\ref{tab:hvsaccuracy}); for such signals, transit-tailored methods such as the Box Least-Squares periodogram may be more efficient.
     An open-source implementation of the fast template periodogram is freely available online.\footnote{\url{https://github.com/PrincetonUniversity/FastTemplatePeriodogram}}
 \end{abstract}
