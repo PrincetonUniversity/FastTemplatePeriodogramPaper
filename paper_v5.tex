@@ -873,7 +873,7 @@ conclusion is specific to the dense-sampling regime; in the sparse
 regime, where few epochs constrain many free parameters, the
 template's shape prior becomes decisive even for these smooth
 profiles, as quantified in the sparse-sampling simulation-validation
-results presented later in the paper.)
+results of Section~\ref{sec:simval}.)
 For the three non-sinusoidal templates (transit, EB,
 ellipsoidal$\;+\;$beaming), FTP at $H = H_{95\%}$ recovers the
 period in $\geq 29/30$ trials at every SNR tested, while the
@@ -1260,8 +1260,9 @@ template has ${\rm FAP} = 0.0030$, so the Bonferroni estimate
 $2.4$.  This extra-trials cost is a shift of the null in power units and
 is not directly commensurate with a recovery \emph{rate}; the appropriate
 yardstick for the small, non-monotonic wobble of period-recovery rate with
-vocabulary size in the sparse-sampling recovery simulations (RRab-dominated
-universe; $768$ pooled sources per cell) is the binomial sampling
+vocabulary size in the sparse-sampling recovery simulations
+(Section~\ref{sec:simval-ksweep}; RRab-dominated
+universe, $768$ pooled sources per cell) is the binomial sampling
 uncertainty: the pooled rate at
 $K = 1$, $2$, $4$, $8$ is $0.716$, $0.715$, $0.738$, $0.741$, with Wilson
 $95\%$ intervals $[0.683, 0.747]$, $[0.682, 0.746]$, $[0.706, 0.768]$,
@@ -1283,6 +1284,365 @@ Finally, this section calibrates \emph{significance} only: the completeness
 and purity of template-based detection at a controlled false-alarm rate are
 survey-specific questions deferred to follow-up work.
 
+
+\section{Template vocabularies for heterogeneous signal classes}
+\label{sec:vocab}
+
+The preceding sections assume a single, \emph{a priori} known template.
+Real signal classes are heterogeneous -- RR\,Lyrae alone span
+fundamental-mode (ab) and first-overtone (c) morphologies -- so a blind
+search must instead carry a small \emph{vocabulary} of $K$ templates and
+report the per-frequency maximum power over the set (the catalog-max
+statistic whose null is calibrated in Section~\ref{sec:fap}).  The
+computational cost is $K$ times the single-template cost, so the
+vocabulary must be small and representative.  This section describes how
+the accompanying implementation constructs such vocabularies from a
+library of empirical light-curve shapes; Section~\ref{sec:simval}
+validates the resulting searches on simulated sparse multi-band surveys.
+
+\emph{Shape space and invariances.}
+Every library shape is stored as a truncated Fourier series
+(Equation~\ref{eq:templateFourier}) with no constant term, rescaled at
+construction to unit Fourier energy, $\sum_{k=1}^{H}(c_k^2+s_k^2)=1$.
+Vertical offset and overall scale -- the parameters $\theta_3$ and
+$\theta_1$ that the periodogram itself fits per source -- are therefore
+quotiented out before any shape comparison.  Phase is removed by the
+dissimilarity itself, the orbit-minimized $L^2$ distance
+\begin{equation}\label{eq:orbitdist}
+    d^2(f, g) \;=\; \min_{\Delta\in[0,1)}
+    \bigl\Vert f - g(\cdot - \Delta)\bigr\Vert^2
+    \;=\; 1 - \max_{\Delta} {\rm CC}(\Delta),
+\end{equation}
+where ${\rm CC}(\Delta)$ is the circular cross-correlation of the two
+harmonic-coefficient sequences ($w_k = z^{(f)}_k \overline{z^{(g)}_k}$
+with $z_k = c_k - i s_k$) and the norm is scaled so that a unit-energy
+shape has $\Vert f \Vert = 1$.  The phase maximization is solved exactly
+per pair: ${\rm CC}$ is a degree-$H$ trigonometric polynomial, evaluated
+on an alias-free oversampled FFT grid (size $\geq 8H+1$, rounded up to a
+power of two), after which every cyclic local maximum is polished by
+Newton iterations on the closed-form ${\rm CC}'/{\rm CC}''$; the reported
+distance is machine-precision, not grid-limited.  Reflections
+(time-reversals) are deliberately \emph{not} identified: the
+fast-rise/slow-decline asymmetry of an RRab light curve is a physical,
+discriminating feature, so a mirrored shape is a distinct template.
+
+\emph{Unsupervised selection (PAM $k$-medoids).}
+Given the symmetric matrix of pairwise orbit distances, the default
+selector is classical partitioning around medoids
+\citep{Kaufman+Rousseeuw_1990} on the objective
+$\sum_i \min_{m} d(f_i, f_m)$ (unsquared distances): a greedy
+\textsc{build} seeding followed by \textsc{swap} descent, which applies
+the single best strictly cost-reducing (medoid, non-medoid) exchange
+until none remains, with ten restarts (the deterministic \textsc{build}
+plus nine seeded random size-$K$ subsets) and the lowest-cost solution
+kept.  Medoids are actual library members, so every vocabulary template
+is a physical light-curve shape rather than a cluster average.  The
+vocabulary size $K$ is an input, chosen externally by the
+recovery-versus-$K$ experiments of Section~\ref{sec:simval}.  A
+fixed-chart alternative distance built on the classical Fourier
+invariants $R_{k1} = A_k/A_1$ and $\phi_{k1} = \phi_k - k\phi_1$
+\citep{Simon+Lee_1981} is retained purely as a validation diagnostic
+(agreement of nearest-medoid assignments with the orbit metric); it
+degenerates when the first-harmonic amplitude vanishes, so the orbit
+distance is the reference.
+
+\emph{Recovery-driven selection (greedy set cover).}
+The second selector optimizes the search objective directly.  A seeded
+population of synthetic multi-band light curves is simulated once from
+the truth shapes and target cadence (Section~\ref{sec:simval}) and
+frozen; for every library template the \emph{standalone} mask of sources
+whose period that single template recovers is precomputed; and templates
+are then forward-selected by set cover -- each step adds the template
+that recovers the most not-yet-recovered sources, with ties broken
+deterministically -- stopping at $K$ templates, at zero marginal gain, or
+at full coverage.  Because the catalog statistic is a per-frequency
+maximum over the set, the union of standalone masks is used only as the
+selection signal; the returned figure of merit re-scores the chosen
+$K$-template catalog end-to-end.  If coverage saturates before $K$
+selections, the set is padded to exactly $K$ by farthest-point selection
+under the orbit distance (the saturation point is itself the empirical
+knee).  An optional pre-filter restricts the candidate universe to the
+$M \geq K$ PAM medoids of the full library, capping the standalone-mask
+precompute; recovery-versus-$K$ curves built on such a pool are lower
+bounds on the all-library curves.  To keep the selection honest, the
+selection population is always simulated on a random split disjoint from
+any population used for evaluation.
+
+\emph{Template libraries.}
+Two empirical RR\,Lyrae libraries are used.  The \citet{Sesar_etal_2010}
+SDSS Stripe~82 templates contribute one library shape per (star, band)
+pair; the $g,r$ subset used here comprises $98$ shapes, nearly all RRab.
+The \citet{Baeza-Villagra_etal_2025} DECam $griz$ templates contribute
+$136$ RRab and $144$ RRc stars; their $g,r$ subset comprises $560$
+shapes and is deliberately more morphologically diverse.  Library curves
+are ingested by resampling each published template onto a uniform phase
+grid and taking the real FFT truncated at a common harmonic order
+($H = 8$ throughout this section and the next), dropping the constant
+term and renormalizing to unit energy; libraries supplied at a different
+order are truncated or zero-padded to the common $H$ and renormalized.
+
+\section{Validation on simulated sparse multi-band surveys}
+\label{sec:simval}
+
+\subsection{Simulation harness and comparison methods}
+\label{sec:simval-harness}
+
+Each experiment freezes a seeded population of $256$ synthetic two-band
+($g,r$) light curves per seed, with three seeds pooled for the headline
+cells ($768$ sources per cell).  Every source draws a truth shape
+uniformly from the truth library, a period $P = 1/f$ with $f$ uniform on
+the search band, and a random phase; the unit-energy shape is scaled by
+$0.5$\,mag (an rms amplitude of $0.5/\sqrt{2} \approx 0.35$\,mag, shared
+across bands) around a mean magnitude of $15$, and observed with
+heteroscedastic Gaussian noise
+$\sigma(m) = 0.01 + 0.005\,e^{\,m-20}$
+($\approx 0.010$\,mag at the simulated magnitudes).  Epochs are drawn
+independently per band, uniformly within $270$-day yearly observing
+seasons across a three-year ($T = 1095.75$\,d) baseline; a $60$-epoch-%
+per-band master cadence is downsampled to
+$N \in \{4, 8, 12, 16, 24, 40\}$ epochs per band, so all epoch counts
+score the \emph{identical} sources and method contrasts are paired.
+A period is recovered when $|P_{\rm rec}-P_{\rm true}|/P_{\rm true} <
+0.01$, with \emph{no} credit for harmonic or window aliases (an
+alias-resolved re-scoring is given in Appendix~\ref{app:aliases});
+uncertainties are Wilson $95\%$ intervals on pooled counts and paired
+method contrasts are exact McNemar tests \emph{on the same sources}.
+All methods reduce to $P_{\rm rec} = 1/{\rm argmax}$ over the identical
+explicit grid: $10^4$ trial frequencies on $[1, 5]$\,cyc\,day$^{-1}$
+(RR\,Lyrae periods $0.2$--$1$\,d), i.e.\ a grid spacing
+$\Delta f = 4.0\times10^{-4}$\,cyc\,day$^{-1}$ or $2.28$ grid points per
+Rayleigh width $1/T$ -- every run records $\Delta f$ and this
+points-per-Rayleigh figure, and a hard guard rejects configurations with
+fewer than two points per Rayleigh width.
+
+The comparison methods bracket the multi-band model space.  The
+generalised Lomb--Scargle baseline
+\citep[GLS;][]{Zechmeister+Kurster_2009} fits one shared sinusoid plus
+per-band offsets -- the $(N_{\rm base}, N_{\rm band}) = (1, 0)$ corner of
+the \citet{Vanderplas+Ivezic_2015} multi-band family -- while the
+multi-band LS baseline (MBLS) gives each band its own floating-mean
+sinusoid sharing only the period, their $(0, 1)$ corner.  The
+multi-harmonic Lomb--Scargle
+\citep[MHLS;][]{Schwarzenberg-Czerny_1996} is the free-shape reference:
+a shared Fourier series of requested order $H = 8$ plus per-band
+offsets, with the order capped per light curve at
+$H_{\rm eff} = \max\{1, \min[H, \lfloor(N_{\rm obs} - 2 n_{\rm bands})/4\rfloor]\}$
+so that the design never reaches rank deficiency (an uncapped $H=8$
+design has $p \geq N_{\rm obs}$ columns at sparse $N$ and interpolates
+every point, making the argmax meaningless); at $4$ epochs per band the
+cap forces $H_{\rm eff} = 1$ and MHLS is verifiably identical to GLS.
+The conditional-entropy statistic \citep[CE;][]{Graham_etal_2013b}
+represents binned folding methods: each band min--max normalised, bands
+merged, and $H(m|\phi)$ minimised over a $10\times5$
+(phase\,$\times$\,magnitude) histogram.  The FTP is run in catalog mode
+(\texttt{floating\_offsets}, $H = 8$) with $K = 2$ vocabularies built by
+both selectors of Section~\ref{sec:vocab} from the same library that
+generates the truth shapes (robustness to that assumption is tested
+below).
+
+\subsection{Recovery versus epochs per band}
+\label{sec:simval-nsweep}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\columnwidth]{plots/recovery_vs_nepochs_sesar.pdf}
+    \caption{\label{fig:nsweep} Period-recovery rate versus epochs per
+             band on the RRab-dominated \citet{Sesar_etal_2010} universe
+             ($768$ pooled sources per cell; bands are Wilson $95\%$
+             intervals on pooled counts; vocabulary size $K = 2$).  The
+             template vocabulary dominates every free-shape and binned
+             method in the sparse regime ($N \lesssim 12$ epochs per
+             band) and converges with the sinusoidal baselines once the
+             data constrain their models ($N \gtrsim 16$).  MHLS
+             plateaus below $0.9$ because its extra freedom locks onto
+             harmonic aliases (Appendix~\ref{app:aliases}).  Absolute
+             rates in the sparse cells are lower bounds at this grid
+             density (see the grid-resolution caveat in the text).}
+\end{figure}
+
+Figure~\ref{fig:nsweep} shows the headline result.  At $8$ epochs per
+band the PAM-vocabulary FTP recovers $0.902$ $[0.879, 0.921]$ of
+sources versus $0.417$ $[0.382, 0.452]$ for GLS -- a paired contrast of
+$392$ sources recovered only by the FTP against $19$ only by GLS
+(McNemar $p \approx 10^{-91}$) -- and $0.246$ for MBLS, $0.089$ for CE.
+At the sparsest cell ($N = 4$, where the MHLS cap makes every
+sinusoidal baseline identical to GLS) the FTP still recovers $0.233$
+$[0.205, 0.264]$ versus $0.040$ $[0.029, 0.057]$ ($169$ vs.\ $21$
+discordant sources, $p \approx 10^{-29}$).  By $N = 16$ the sinusoidal
+and template methods have all converged to ${\gtrsim}0.96$ (FTP vs.\
+GLS: $5$ vs.\ $0$ discordant, $p = 0.06$), the binned CE statistic
+converges near $N = 40$ ($80$ merged points against $50$ histogram
+cells), and MHLS alone plateaus at $0.868$ $[0.843, 0.891]$: its
+$2H$ free coefficients happily fit the data at half or a third of the
+true frequency, and Appendix~\ref{app:aliases} shows its residual
+failures are indeed dominated by $2P$/$3P$ harmonic aliases rather than
+noise.  The two vocabulary selectors agree closely on this
+shape-matched universe, with a small but significant PAM advantage in
+the sparsest cells ($124$ vs.\ $43$ discordant at $N = 4$,
+$p \approx 3\times10^{-10}$); the greedy selector's value appears on
+the mismatched-library arm below.
+
+% ===================================================================
+% GRID-RESOLUTION CAVEAT -- single point of update.  When the WP
+% B8-closure dense-grid (or peak-refinement) rerun lands, update the
+% numbers in THIS paragraph only (and the one caption cross-reference
+% in Figure~\ref{fig:nsweep}).
+% ===================================================================
+\emph{Grid-resolution caveat.}
+The absolute sparse-regime rates above are \emph{lower bounds at the
+stated $10^4$-frequency production grid} for the $H = 8$ and binned
+methods.  A multi-harmonic peak has width ${\sim}\,{\rm Rayleigh}/H$, so
+the production grid places only ${\approx}\,0.29$ points per $H = 8$
+peak width.  A paired convergence check re-scoring the identical seed-0
+sources on a $2\times10^4$-frequency grid ($4.56$ points per Rayleigh
+width) finds $8$ of $30$ (method, $N$) cells significantly changed
+(exact McNemar, $p < 0.05$), \emph{all} gaining at the denser grid:
+MHLS gains most (up to $+0.17$ at $N = 12$), the FTP gains in one cell
+($N = 8$: $0.926 \rightarrow 0.973$, $+17/-5$ discordant, $p = 0.017$),
+CE in two, MBLS in one, and GLS in none (all $p \geq 0.13$).  The
+method \emph{ordering} is unaffected: the FTP$-$GLS recovery margin is
+equal or wider on the denser grid ($0.20 \rightarrow 0.25$ at $N = 4$;
+$0.539$ on both grids at $N = 8$), so the FTP-versus-GLS contrasts
+quoted here are conservative.  A dense-grid closure rerun will finalize
+the absolute sparse-cell rates; every absolute rate in this section is
+quoted ``at the $10^4$-frequency production grid.''
+
+\subsection{Recovery versus vocabulary size}
+\label{sec:simval-ksweep}
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=\textwidth]{plots/recovery_vs_k_sparse.pdf}
+    \caption{\label{fig:ksweep} Sparse-regime ($6$ epochs per band)
+             period recovery versus vocabulary size $K$ for PAM and
+             greedy vocabularies, with the $K$-independent baselines as
+             reference bands.  \emph{Left}: the RRab-dominated
+             \citet{Sesar_etal_2010} universe ($768$ pooled sources) is
+             flat in $K$ -- a single well-chosen medoid already covers
+             the population.  \emph{Right}: the morphologically diverse
+             RRab$+$RRc universe of \citet{Baeza-Villagra_etal_2025}
+             ($256$ sources) needs $K = 2$: the $K{=}1 \rightarrow 2$
+             jump is $+0.19$ (McNemar $p \approx 8\times10^{-9}$),
+             after which the curve is flat.}
+\end{figure*}
+
+Figure~\ref{fig:ksweep} asks how large the vocabulary must be, in the
+regime where it matters (six epochs per band).  On the RRab-dominated
+\citet{Sesar_etal_2010} universe the pooled PAM curve at
+$K = 1, 2, 4, 8$ is $0.716$, $0.715$, $0.738$, $0.741$ with mutually
+overlapping Wilson intervals; the paired $K{=}1$-versus-$K{=}2$
+contrast is $34$ vs.\ $33$ discordant sources ($p = 1.0$) -- the curve
+is flat in $K$ within the sampling noise, and the smallest $K$ whose
+interval overlaps the best cell's is $K = 1$.  (A naive
+$98\%$-of-maximum rule would return $K = 4$; the differences it chases
+are not significant.)  On the RRab$+$RRc universe of
+\citet{Baeza-Villagra_etal_2025} the same curve is $0.512$, $0.703$,
+$0.727$, $0.719$: the $K{=}1 \rightarrow 2$ jump of $+0.191$ is highly
+significant ($13$ vs.\ $62$ discordant, $p \approx 8\times10^{-9}$)
+and the curve is flat thereafter.  The two panels together give the
+honest reading: \emph{vocabulary size matters when the target
+population is morphologically diverse} -- one medoid cannot serve both
+RRab and RRc -- \emph{and is a second-order effect for a
+shape-homogeneous class}, where the gain from $K = 1$ to $K = 8$ is at
+most $\sim 0.03$ and statistically marginal.  Even at $K = 1$ every
+FTP point sits far above the sparse-regime baselines (GLS $0.171$,
+MHLS $0.197$, MBLS $0.090$ on the Sesar universe; GLS $0.422$ on the
+diverse universe).  This recovery-rate flatness is complementary to
+the significance cost of Section~\ref{sec:fap}, where enlarging $K$
+raises the catalog-max detection threshold: together they argue for
+the smallest $K$ that covers the class morphology.
+
+\subsection{Robustness arms and empirical photometric errors}
+\label{sec:simval-robust}
+
+\begin{table}
+\centering
+\caption{\label{tab:robustness}
+Robustness arms (single seed, $256$ sources per cell, $K = 2$,
+$10^4$-frequency grid): period-recovery rate at $N = 4/8/12$ epochs per
+band.  Holdout: truth shapes drawn from a held-out half of the
+library, so the vocabulary never contains the generating shapes.
+Cross-universe: truth from the RRab$+$RRc DECam universe, library
+and vocabularies from the Sesar universe.  Band-amplitude: truth
+amplitudes differ by a factor $1.4$ between $g$ and $r$, violating the
+shared-amplitude model.}
+\footnotesize
+\begin{tabular}{llccc}
+\hline\hline
+Arm & Method & $N{=}4$ & $N{=}8$ & $N{=}12$ \\
+\hline
+holdout ($50\%$)  & FTP (PAM)    & $0.164$ & $0.891$ & $0.965$ \\
+                  & FTP (greedy) & $0.152$ & $0.879$ & $0.973$ \\
+                  & GLS          & $0.047$ & $0.449$ & $0.898$ \\
+\hline
+cross-universe    & FTP (PAM)    & $0.102$ & $0.695$ & $0.973$ \\
+                  & FTP (greedy) & $0.109$ & $0.887$ & $0.988$ \\
+                  & GLS          & $0.086$ & $0.672$ & $0.926$ \\
+\hline
+band-amp.\ $1.4$  & FTP (PAM)    & $0.082$ & $0.898$ & $0.988$ \\
+                  & FTP (greedy) & $0.031$ & $0.793$ & $0.988$ \\
+                  & GLS          & $0.047$ & $0.328$ & $0.867$ \\
+\hline
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:robustness} stresses the three assumptions the headline
+setup makes.  With half the library held out of vocabulary construction
+(truth shapes never available as templates), the sparse-regime advantage
+survives essentially intact ($0.891$ vs.\ $0.449$ at $N = 8$): the
+vocabulary generalizes across shapes rather than memorizing them.  With
+a $1.4\times$ band-amplitude ratio -- misspecifying the shared-amplitude
+signal model -- the advantage again persists ($0.898$ vs.\ $0.328$ at
+$N = 8$).  The cross-universe arm is the hardest test and the most
+informative: with RRab$+$RRc truth but a Sesar-only library, the
+\emph{unsupervised} PAM vocabulary degrades toward GLS ($0.695$ vs.\
+$0.672$ at $N = 8$, and one source \emph{behind} GLS at $N = 16$,
+$0.996$ vs.\ $1.000$), while the \emph{recovery-driven} greedy
+vocabulary -- which sees a simulated population from the target
+universe during selection -- adapts and retains the full advantage
+($0.887$ at $N = 8$).  When the library may not span the target
+population, the supervised selector is the safer choice.
+
+A fourth arm replaces the synthetic noise model with the empirical ZTF
+error-versus-magnitude relation measured from the real light curves
+used for the cadence models of this paper's follow-up work; the
+empirical curve is a factor $1.4$--$3.5$ larger than the synthetic one
+over its measured range ($14.3 \leq m \leq 18.5$).  Recovery is
+essentially unchanged -- FTP(PAM) $0.215/0.918/0.988$ at $N = 4/8/12$
+versus $0.233/0.902/0.984$ pooled synthetic (this arm ran at $K = 4$;
+the Sesar curve is flat in $K$) -- because RR\,Lyrae-scale amplitudes
+keep the per-epoch shape signal-to-noise high: in this regime recovery
+is limited by epoch count and the window function, not by photometric
+noise.
+
+\subsection{Cost versus accuracy}
+\label{sec:simval-cost}
+
+Finally, the same harness times the FTP against the non-linear
+template-fitting procedure it replaces: a Sesar-style oracle
+\citep[cf.][]{Sesar_etal_2010,Sesar_etal_2016} that, at every
+(template, frequency) pair, brute-force scans $128$ phase shifts,
+solves amplitude and per-band offsets linearly at each, and polishes
+the best phase by golden-section refinement.  On a $32$-source
+subsample at $1500$ frequencies with the $K = 2$ vocabulary the two
+return \emph{identical} recovered periods (recovery $0.344$ for both)
+-- consistent with the $<10^{-6}$ agreement of their per-frequency
+optima -- at $23.5$\,s for the FTP versus $56.2$\,s for the oracle, a
+measured ${\approx}2.4\times$ wall-time advantage under this harness's
+deliberately modest settings ($128$ phase trials, $N_{\rm obs} \leq
+120$).  The ratio is structural rather than incidental: the oracle's
+per-frequency cost scales with the number of phase trials \emph{and}
+with $N_{\rm obs}$, while the FTP's per-frequency cost is independent
+of $N_{\rm obs}$ (Section~\ref{sec:compreqs}), so the advantage grows
+without bound with denser phase grids and longer light curves --
+the single-band measurements of Figure~\ref{fig:timingndata} reach
+${\gtrsim}480\times$ by $N_{\rm obs} = 250$ against a generic
+non-linear optimizer.  Reported end-to-end per-star costs of
+survey template-fitting pipelines are larger by further orders of
+magnitude, but those figures fold in denser phase grids, per-band
+template sets, and infrastructure external to the fitting algorithm,
+so we quote only the like-for-like in-harness ratio as a measured
+result.
 
 \section{Discussion}\label{sec:discussion}
 
@@ -1326,16 +1686,13 @@ The current implementation could likely be improved by:
           factor of ${\sim}25$--$35$ that the scan+polish default already gains
           over the reference root-finding path.
     \item Exploiting the embarassingly parallel nature of the FTP using GPU's.
-    \item Searching over a small library of templates with independent
-          amplitudes and phases per template, rather than a single fixed
-          template. This is a natural extension when the underlying
-          signal class is heterogeneous (e.g.\ a mixture of RR\,Lyrae
-          subtypes); the polynomial-root formulation generalises to the
-          shared-frequency multi-template setting analogously to the
-          multi-band extension of
-          Appendix~\ref{sec:shphmult}, and the principled construction
-          of a small, representative template library from a labelled
-          training set is itself an active line of work.
+    \item Extending the vocabulary search of
+          Sections~\ref{sec:vocab}--\ref{sec:simval} -- which fits each
+          template separately and reports the per-frequency maximum --
+          to a \emph{joint} shared-frequency model with independent
+          amplitudes and phases per template.  The polynomial-root
+          formulation generalises to that setting analogously to the
+          multi-band extension of Appendix~\ref{sec:shphmult}.
 \end{enumerate}
 
 For a constant baseline, the default implementation improves on full non-linear optimization by
@@ -1792,6 +2149,80 @@ whose degree is at most $8HK-2$: each term's nominal leading coefficient at degr
 \label{app:mbcost}
 
 For every mode the per-band NFFT summations cost $\bigO(KN_fH\log N_fH)$ over the full frequency grid, independent of the sharing mode. The per-frequency phase maximisation is where the modes differ. The coupled-but-cheap members \texttt{floating\_offsets} and \texttt{sesar} each assemble a single band-combined polynomial of degree at most $6H-2$ (Equation~\ref{eq:foaverage} and the \texttt{sesar} construction of Section~\ref{app:sesarmode}) and solve it at the single-band cost $\bigO(H^3)$ per frequency, so their total cost $\bigO(KN_fH\log N_fH + N_fH^3)$ exceeds a single-band periodogram's only through the $K$-fold NFFT summations; \texttt{independent} runs $K$ such solves, at $\bigO(KN_fH^3)$. Only \texttt{shared\_phase} is genuinely more expensive: its degree-$(8HK-2)$ stationarity polynomial $G$ costs $\bigO((HK)^3)$ per frequency. The implementation accompanying this paper replaces that root-finding with a direct scan of $F(\eith)$ on $\bigO(HK)$ trial phases, forming and solving $G$ only at those frequencies where \emph{some} band's template-variance polynomial $|MM^{(k)}|$ nearly vanishes on the unit circle (its minimum over the circle falling below a fixed fraction of its maximum). This removes the $\bigO((HK)^3)$ cost away from such deep-$|MM|$ dips, but not at them, where the exact root path is still run and the better of the two solutions kept, so the saving is opportunistic rather than guaranteed. The realised speedup is therefore strongly configuration-dependent: on well-conditioned dense-grid \texttt{shared\_phase} data ($K=2$) we measure the scan to be $1.3\times$ faster than the reference root path at $H=3$ and $5.4\times$ at $H=8$, but on sparse or otherwise deep-$|MM|$ sampling, where the fallback fires at most frequencies, the cost approaches that of the reference and the speedup collapses toward $1\times$. Since the polynomial step dominates in most applications, the multi-band template periodogram in the shared-amplitude modes is not significantly more computationally intensive than the single-band case.
+
+\section{Alias breakdown of the simulated recovery rates}
+\label{app:aliases}
+
+The headline recovery criterion of Section~\ref{sec:simval} --
+$|P_{\rm rec}-P_{\rm true}|/P_{\rm true} < 0.01$, exact only -- has one
+known blind spot on this search band: a $\pm1$\,yr$^{-1}$ window beat
+displaces the frequency by only $|\Delta f| = 1/365.25$\,cyc\,day$^{-1}$,
+a fractional period error of at most $0.27\%$ for $f \geq
+1$\,cyc\,day$^{-1}$, so the fractional criterion cannot distinguish a
+year beat from an exact recovery.  Every scored (method, cell) pair
+therefore persists its per-source recovered periods, and
+Table~\ref{tab:aliases} re-scores them under baseline-aware phase
+coherence, $|\Delta f|\,T < 0.5$ \citep[the accumulated-phase-drift
+convention of][]{Graham_etal_2013}: over the $T = 1095.75$\,d baseline a
+year beat accumulates $|\Delta f|\,T = 3$ cycles of drift and is cleanly
+separated, while each non-exact recovery is assigned to the nearest
+member of a named alias set (harmonic multiples $P/2$, $2P$, $3P$ and
+the $\pm1$\,day$^{-1}$, $\pm1$\,yr$^{-1}$ window beats).
+
+Three facts emerge.  First, the headline is safe: year-beat
+contamination is at most one source per cell (and $\pm1$\,day$^{-1}$
+beats are entirely absent at $N \geq 8$), and the two scoring
+conventions agree on the headline rates -- e.g.\ FTP (PAM) at $N = 8$
+is $689/768 = 0.897$ phase-coherent-exact versus $0.902$ under the
+fractional criterion.  Second, the FTP's sparse-regime failures are
+genuine misses, not aliases: at $N = 8$ none of its $79$ failures land
+on a named alias.  Third, the MHLS plateau of
+Figure~\ref{fig:nsweep} is harmonic aliasing, not noise: at $N = 40$
+its $2P$ and $3P$ aliases account for $99/768$ sources, and crediting
+them would lift MHLS from $0.868$ to $0.997$ -- the free-shape fit
+detects \emph{a} periodicity but, lacking a shape prior, often locks
+onto a harmonic of the fundamental.  The conditional-entropy statistic
+shows the same signature at lower amplitude.  The full breakdown over
+all epoch counts regenerates from the committed per-source artifacts
+and scripts (see Data Availability).
+
+\begin{table}
+\centering
+\caption{\label{tab:aliases}
+Alias-resolved re-scoring of the pooled \citet{Sesar_etal_2010}-universe
+recovery results ($768$ sources per cell, $K = 2$) under phase coherence
+$|\Delta f|\,T < 0.5$.  Counts per cell: exact recoveries, harmonic
+aliases, $\pm1$\,yr$^{-1}$ window beats, and misses.  ($P/3$ and
+$\pm1$\,day$^{-1}$ entries are zero in every cell shown and are
+omitted.)}
+\footnotesize
+\begin{tabular}{llrrrrrr}
+\hline\hline
+$N$ & Method & exact & $P/2$ & $2P$ & $3P$ & yr beat & miss \\
+\hline
+ 8 & FTP (PAM)    & 689 & 0 & 0  & 0  & 0 & 79  \\
+ 8 & FTP (greedy) & 666 & 0 & 0  & 0  & 1 & 101 \\
+ 8 & GLS          & 307 & 0 & 1  & 0  & 1 & 459 \\
+ 8 & MHLS         & 428 & 0 & 15 & 6  & 1 & 318 \\
+ 8 & MBLS         & 184 & 1 & 0  & 0  & 0 & 583 \\
+ 8 & CE           &  60 & 1 & 13 & 3  & 0 & 691 \\
+\hline
+16 & FTP (PAM)    & 768 & 0 & 0  & 0  & 0 & 0   \\
+16 & FTP (greedy) & 766 & 0 & 0  & 0  & 0 & 2   \\
+16 & GLS          & 763 & 0 & 0  & 0  & 0 & 5   \\
+16 & MHLS         & 595 & 0 & 70 & 23 & 1 & 79  \\
+16 & MBLS         & 739 & 0 & 0  & 0  & 0 & 29  \\
+16 & CE           & 643 & 1 & 39 & 1  & 0 & 84  \\
+\hline
+40 & FTP (PAM)    & 768 & 0 & 0  & 0  & 0 & 0   \\
+40 & FTP (greedy) & 768 & 0 & 0  & 0  & 0 & 0   \\
+40 & GLS          & 768 & 0 & 0  & 0  & 0 & 0   \\
+40 & MHLS         & 667 & 0 & 83 & 16 & 0 & 2   \\
+40 & MBLS         & 768 & 0 & 0  & 0  & 0 & 0   \\
+40 & CE           & 762 & 0 & 6  & 0  & 0 & 0   \\
+\hline
+\end{tabular}
+\end{table}
 
 \end{appendix}
 
