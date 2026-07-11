@@ -1168,6 +1168,119 @@ Figure~\ref{fig:timingndata}).
 % Nf = 10^120!!
 
 
+\subsection{Significance and false-alarm calibration}
+\label{sec:fap}
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=0.45\textwidth]{plots/fap_vs_threshold.pdf}
+    \includegraphics[width=0.45\textwidth]{plots/nullmax_vs_K.pdf}
+    \caption{\label{fig:fap} Measured pure-noise null of the maximum
+             periodogram power ($3000$ realizations; single band,
+             $N_{\rm obs}=40$, three-year seasonal cadence, homoscedastic
+             $\sigma \approx 0.010$\,mag; $10^4$ trial frequencies on
+             $[1,5]$\,cyc\,day$^{-1}$).  \emph{Left}: false-alarm probability
+             versus max-power threshold for the FTP at
+             $H \in \{1, 3, 6, 12\}$ (solid: empirical survival function;
+             dashed: generalised-extreme-value fit).  The $H{=}1$ curve is
+             identical to GLS; the inflation from the non-linear phase family
+             appears at $H \geq 3$ and is nearly saturated there.
+             \emph{Right}: null of the catalog-max statistic for nested
+             $K$-template prefixes of a single $K{=}8$ vocabulary; markers
+             show the empirical ${\rm FAP}=0.01$ thresholds, which grow from
+             $0.540$ ($K{=}1$) to $0.576$ ($K{=}8$) -- the pure extra-trials
+             cost of a larger vocabulary.}
+\end{figure*}
+
+At a fixed trial frequency the template periodogram is not the score of a
+linear model of fixed dimension: the model
+$\hat{y} = \theta_1\Mshft + \theta_3$ has only three free parameters, but the
+phase $\theta_2$ enters non-linearly, and the reported power is a maximum over
+the up-to-$(6H{-}2)$ stationary phases of Equation~\ref{eq:finalpoly}.  The
+classical per-frequency null for linear periodograms (an incomplete-beta /
+$\chi^2$ law with the model's degrees of freedom) therefore does not apply
+directly; the natural framework is the extreme-value treatment of
+\cite{Baluev_2008}, with an \emph{effective} number of degrees of freedom
+inflated relative to the single-sinusoid case.  Rather than derive a bound,
+we measure the null directly: $3000$ pure-noise light curves at a
+production-like cadence (single band, $N_{\rm obs}=40$, three-year baseline
+with $270$-day observing seasons, homoscedastic $\sigma \approx 0.010$\,mag),
+searched over $10^4$ trial frequencies on $[1,5]$\,cyc\,day$^{-1}$ with
+RR\,Lyrae-medoid templates truncated at order $H$, alongside a floating-mean
+(generalised) Lomb--Scargle baseline \citep[GLS;][]{Zechmeister+Kurster_2009}.
+Two facts summarise the measurement (Figure~\ref{fig:fap}, left).  First, at
+$H=1$ the FTP \emph{is} the GLS: the per-realization maximum powers agree to
+a maximum absolute difference of $1.2\times10^{-9}$ over all $3000$
+realizations, as they must -- a single-harmonic template spans the same
+linear space as a floating-mean sinusoid.  Second, the inflation from
+the non-linear phase family is modest and saturates almost immediately: the
+mean null maximum rises from $0.408$ at $H=1$ to $0.440$ at $H=3$, then
+$0.443$ at both $H=6$ and $H=12$, and the empirical ${\rm FAP}=0.01$
+threshold rises from $0.535$ ($H=1$) to $0.551$, $0.551$, and $0.553$ at
+$H=3$, $6$, and $12$.  An $H=12$ template therefore costs less than $+0.02$
+in detection threshold at fixed false-alarm probability relative to
+Lomb--Scargle -- far below the cost of the $2H{+}1 = 25$ free coefficients
+of a multi-harmonic fit of the same order -- because the fixed template
+shape confines the maximisation to a one-parameter curve of phase shifts
+inside the $(2H{+}1)$-dimensional harmonic space.
+Generalised-extreme-value fits (dashed curves in Figure~\ref{fig:fap})
+describe the empirical curves well and extend the thresholds beyond the
+Monte-Carlo resolution.
+
+The statistic being calibrated is the normalised power of
+Equation~\ref{eq:lsp}, $P = (V_0 - V)/V_0$ -- equivalently
+$1 - \chi^2/\chi^2_0$, since $\chi^2 = W V$ (Section~\ref{sec:max-likelihood})
+-- which is confined to $[0,1]$: $V \geq 0$ gives the upper bound, and the
+constant-only null model is nested in the template model, so $V \leq V_0$.
+In the multi-band hierarchy of Appendix~\ref{sec:shphmult} the reference
+variance $V_0$ differs by sharing mode (Table~\ref{tab:sharingmodes}): the three modes that
+retain a per-band offset (\texttt{independent}, \texttt{shared\_phase},
+\texttt{floating\_offsets}) measure power against the per-band-centred
+variance $\sum_k \Wtk YY^{(k)}$, whose null model is a separate constant per
+band, whereas the fully shared \texttt{sesar} mode measures power against the
+global weighted variance of the data after subtracting its fixed per-band
+offsets $\lk$, whose null model is a single global constant.  Null
+distributions, and therefore detection thresholds, calibrated for one mode
+do not transfer to another, even on identical data.
+
+When a vocabulary of $K$ templates is searched and the maximum power over the
+vocabulary is reported (the catalog-max statistic
+$\max_{j \leq K}\max_\omega P_j(\omega)$), the null acquires a $K$-dependence:
+an extra-trials cost.  A Bonferroni bound,
+${\rm FAP}_K(z) \leq K\,{\rm FAP}_1(z)$, is always valid but conservative,
+because the per-template statistics are computed on the same data and the
+templates share their low-order harmonics.  The measured null
+(Figure~\ref{fig:fap}, right; nested prefixes of a single $K{=}8$
+partitioning-around-medoids vocabulary built from the \citealt{Sesar_etal_2010}
+RR\,Lyrae library) quantifies both statements: the mean null maximum grows
+from $0.422$ ($K{=}1$) to $0.467$ ($K{=}8$) and the ${\rm FAP}=0.01$ threshold
+from $0.540$ to $0.576$, while at that measured $K{=}8$ threshold a single
+template has ${\rm FAP} = 0.0030$, so the Bonferroni estimate
+($8 \times 0.0030 = 0.024$) overstates the measured $0.010$ by a factor
+$2.4$.  This measured extra-trials cost is the right
+yardstick for the small, non-monotonic wobble of period-recovery rate with
+vocabulary size in the sparse-sampling recovery simulations (RRab-dominated
+universe; $768$ pooled sources per cell): the pooled rate at
+$K = 1$, $2$, $4$, $8$ is $0.716$, $0.715$, $0.738$, $0.741$, with Wilson
+$95\%$ intervals $[0.683, 0.747]$, $[0.682, 0.746]$, $[0.706, 0.768]$,
+$[0.709, 0.771]$ -- a non-monotone range of $0.026$ with overlapping
+intervals, comparable to the extra-trials penalty and therefore not
+evidence of a vocabulary-quality effect at this sampling.
+
+Two caveats bound this calibration.  First, the null is calibrated at a
+single configuration -- one band, $N_{\rm obs}=40$, this cadence and grid --
+and the thresholds shift with the number of observations, the band
+structure, and the grid density, so they do not transfer to other survey
+configurations without recalibration.  Second,
+the null's $K$-axis isolates the pure extra-trials cost by nesting prefixes
+of one fixed $K{=}8$ vocabulary, whereas the production $K$-sweep rebuilds an
+independent vocabulary at each $K$ -- the template identities themselves
+change with $K$ -- an effect bounded by the measured ${\sim}0.025$ spread of
+the per-template null-max means across the eight vocabulary templates.
+Finally, this section calibrates \emph{significance} only: the completeness
+and purity of template-based detection at a controlled false-alarm rate are
+survey-specific questions deferred to follow-up work.
+
 
 \section{Discussion}\label{sec:discussion}
 
