@@ -1384,6 +1384,61 @@ grid and taking the real FFT truncated at a common harmonic order
 term and renormalizing to unit energy; libraries supplied at a different
 order are truncated or zero-padded to the common $H$ and renormalized.
 
+\subsection{Joint refinement of the vocabulary}
+\label{sec:vocab-joint}
+
+Both selectors above are \emph{one-shot}: they fix the vocabulary from a clean
+library before any target data are seen.  A natural alternative is to refine
+the vocabulary \emph{jointly} against the observed population by
+expectation--maximization (EM), initialized from the pipeline vocabulary.
+Each E-step assigns every source to its best-fitting vocabulary template and
+records the recovered frequency (the per-template catalog statistic of
+Section~\ref{sec:vocab}); each M-step re-estimates every template as the
+amplitude-weighted, orbit-aligned average of the sources assigned to it,
+iterating to a held-out early stop.  This is an instance of multireference
+alignment, whose pooling advantage grows as the per-epoch signal-to-noise
+falls -- so one might expect it to help precisely in the sparse regime that
+motivates a template method.
+
+It does not, at least for RR\,Lyrae.  Across three bounded experiments
+($H=4$, $K=2$, $g+r$, a $60$-day baseline, the \citet{Sesar_etal_2010}
+universe, one seed) the joint-minus-pipeline recovery gap is consistent with
+zero at every epoch count.  With the population drawn from the same library
+both selectors cluster ($32$ sources), and with a zero-mean per-source Fourier
+jitter of $0.15$ at $\langle m\rangle = 19$ ($64$ sources), the gap is
+$+0.000$ throughout.  The only lever that gives EM genuine headroom --
+withholding half the library so the population shapes are \emph{absent} from
+the clustered set ($64$ sources) -- produces a gap of $-0.031$ at $N=4$ epochs
+per band (pipeline $0.828$ versus joint $0.797$, within one binomial standard
+error of zero) and $+0.000$ for $N \geq 6$.  In that $N=4$ cell the EM did
+iterate and improve the held-out \emph{validation} recovery (stopping at
+iteration $4$ of $7$) -- the machinery works -- but the gain did not
+generalize to the disjoint evaluation population.
+
+Three mechanisms explain the null.  (i) The RR\,Lyrae shape manifold is
+low-dimensional and densely sampled: even a disjoint half-library contains a
+near medoid for any population shape, so the one-shot vocabulary is already
+near-optimal.  (ii) Period recovery is shape-robust -- the fractional-error
+metric saturates to unity by $N \gtrsim 6$ even with an imperfect template --
+so a better-matched shape has no recovery headroom to capture.  (iii) The
+regime is wrong: multireference alignment's pooling advantage is a
+low-per-epoch-SNR effect, whereas RR\,Lyrae combine $\sim\!0.5$-mag amplitudes
+with $\sim\!0.01$--$0.02$-mag photometry (per-epoch signal-to-noise
+$\sim\!40$--$50$), so single-source shape information is already sufficient and
+pooling adds nothing.  The ``sparse'' axis here is the epoch \emph{count}, not
+the per-epoch signal-to-noise.
+
+These runs are bounded (single seed, $H=4$, one universe), and the EM
+implementation itself is exact and independently verified -- the
+iteration-invariant trigonometric summations are reused across iterations
+without loss of precision.  A fuller evaluation (multiple seeds with error
+bars, $H=8$, both libraries, and a genuinely low-signal-to-noise population
+such as the empirical ZTF error model of Section~\ref{sec:simval-robust}), and
+catalog-scale joint inference across many signal classes, are left to future
+work.  For RR\,Lyrae, whose realistic regime is high signal-to-noise, the
+one-shot pipeline vocabulary is the recommended default and the negative
+result already covers the science case.
+
 \section{Validation on simulated sparse multi-band surveys}
 \label{sec:simval}
 
