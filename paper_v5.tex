@@ -1381,7 +1381,9 @@ $136$ RRab and $144$ RRc stars; their $g,r$ subset comprises $560$
 shapes and is deliberately more morphologically diverse.  Library curves
 are ingested by resampling each published template onto a uniform phase
 grid and taking the real FFT truncated at a common harmonic order
-($H = 8$ throughout this section and the next), dropping the constant
+($H = 8$ throughout this section and the next, apart from the bounded
+joint-refinement experiments of Section~\ref{sec:vocab-joint}, which use
+$H = 4$), dropping the constant
 term and renormalizing to unit energy; libraries supplied at a different
 order are truncated or zero-padded to the common $H$ and renormalized.
 
@@ -1425,7 +1427,7 @@ so a better-matched shape has no recovery headroom to capture.  (iii) The
 regime is wrong: multireference alignment's pooling advantage is a
 low-per-epoch-SNR effect, whereas RR\,Lyrae combine $\sim\!0.5$-mag amplitudes
 with $\sim\!0.01$--$0.02$-mag photometry (per-epoch signal-to-noise
-$\sim\!40$--$50$), so single-source shape information is already sufficient and
+$\sim\!25$--$50$), so single-source shape information is already sufficient and
 pooling adds nothing.  The ``sparse'' axis here is the epoch \emph{count}, not
 the per-epoch signal-to-noise.
 
@@ -1749,7 +1751,7 @@ truth-catalog imprecision into nominal misses (below).
 
 Under the strict criterion the pre-adjudication recovery rate on the $58$
 science stars is $87.9\%$ for the FTP multi-band statistic and $89.7\%$ for
-conditional entropy \citep{Graham_etal_2013}, with all six methods between
+conditional entropy \citep{Graham_etal_2013b}, with all six methods between
 $82.8\%$ and $89.7\%$ (every multi-band method $\geq85\%$).  Inspection of the
 nominal misses shows they are dominated not by the periodograms but by the
 truth catalogs: for the $12$ stars present in both Chen and Gaia the two truth
@@ -1766,13 +1768,15 @@ lawful case is a resolved Blazhko/period-change candidate
 (sideband $\Delta f = 5.4\times10^{-4}$\,cyc\,d$^{-1}$, modulation period
 ${\approx}5.1$\,yr).  Re-scoring against the adjudicated periods raises the FTP
 multi-band, multi-band Lomb--Scargle \citep{Vanderplas+Ivezic_2015}, and
-conditional-entropy rates to $58/58 = 100\%$ on science and $72/73$ overall
-(Table~\ref{tab:ztfrecovery}).  Crucially, the plain fractional-only $1\%$
+conditional-entropy rates to $58/58 = 100\%$ on science, with the FTP
+multi-band statistic and conditional entropy reaching $72/73$ ($98.6\%$)
+overall and multi-band Lomb--Scargle $71/73$ ($97.3\%$;
+Table~\ref{tab:ztfrecovery}).  Crucially, the plain fractional-only $1\%$
 convention reproduces these post-adjudication multi-band numbers \emph{without}
 any adjudication: the evidence-driven procedure converges to the community
 convention from below rather than manufacturing recoveries.  Across all $438$
 (star, method) cells there is not a single day-, year-, or $354$-day-beat
-alias classification: with ${\gtrsim}250$ epochs over ${\geq}4.9$\,yr the ZTF
+alias classification: over baselines of ${\geq}4.9$\,yr the ZTF
 window function does not push any method onto a sampling alias of a real
 signal at these brightnesses.
 
@@ -1790,8 +1794,8 @@ Method & science ($n{=}58$) & controls ($n{=}12$) & all ($n{=}73$) \\
 \hline
 FTP multi-band     & $100\%$ $[93.8,100]$ & $91.7\%$ $[64.6,98.5]$ & $98.6\%$ $[92.6,99.8]$ \\
 cond.\ entropy     & $100\%$ $[93.8,100]$ & $91.7\%$ $[64.6,98.5]$ & $98.6\%$ $[92.6,99.8]$ \\
-multi-band LS      & $100\%$ $[93.8,100]$ & $83.3\%$ $[55.2,95.3]$ & $97.3\%$ $[90.6,99.2]$ \\
-GLS (single band)  & $98.3\%$ $[90.9,99.7]$ & $91.7\%$ $[64.6,98.5]$ & $97.3\%$ $[90.6,99.2]$ \\
+multi-band LS      & $100\%$ $[93.8,100]$ & $83.3\%$ $[55.2,95.3]$ & $97.3\%$ $[90.5,99.2]$ \\
+GLS (single band)  & $98.3\%$ $[90.9,99.7]$ & $91.7\%$ $[64.6,98.5]$ & $97.3\%$ $[90.5,99.2]$ \\
 FTP (single band)  & $96.6\%$ $[88.3,99.0]$ & $91.7\%$ $[64.6,98.5]$ & $94.5\%$ $[86.7,97.8]$ \\
 MHLS ($H{=}8$)     & $91.4\%$ $[81.4,96.3]$ & $91.7\%$ $[64.6,98.5]$ & $91.8\%$ $[83.2,96.2]$ \\
 \hline
@@ -1812,7 +1816,8 @@ no coherent power at its Gaia period in any statistic; the measurable selection
 effect is therefore photometric \emph{depth}, not any tuning of the methods to
 Chen's selection.  This matches the acquisition-stage finding that Chen's
 incompleteness in the densest field is driven by epoch coverage rather than
-brightness (Chen catalogs $134$ of the $958$ Gaia RR\,Lyrae there).
+brightness (Chen catalogs only about one in seven of the Gaia RR\,Lyrae
+there, ${\sim}130$ of ${\sim}960$).
 
 \subsection{False-alarm behaviour on real photometry}
 \label{sec:ztfdemo-fap}
@@ -1923,7 +1928,7 @@ periodic signals of specified shape in large time-series datasets.
 
 A bounded real-survey demonstration of the multi-band FTP against
 single-band and multi-band Lomb--Scargle \citep{Vanderplas+Ivezic_2015}
-and conditional entropy \citep{Graham_etal_2013} is presented in
+and conditional entropy \citep{Graham_etal_2013b} is presented in
 Section~\ref{sec:ztfdemo}, on a labelled sample of ZTF RR\,Lyrae with
 \citet{Chen_etal_2020} and Gaia DR3 \citep{Clementini_etal_2023} periods as
 truth.  The multi-band FTP recovers periods on par with the strongest
