@@ -1920,12 +1920,19 @@ $N_{\rm obs}$ increases. This work presents the mathematical shortcut that, real
 scan+polish maximiser, makes template fitting a fast and valuable tool for detecting non-sinusoidal
 periodic signals of specified shape in large time-series datasets.
 
-A real-survey demonstration of the multi-band FTP against
-single-band Lomb--Scargle, multi-band Lomb--Scargle
-\citep{Vanderplas+Ivezic_2015}, and full non-linear template fitting
-\citep{Sesar_etal_2016} is the natural next step and is the subject of
-follow-up work using the Zwicky Transient Facility public DR22 sparse
-multi-band photometry of RR\,Lyrae, with the Gaia DR3 RR\,Lyrae catalogue \citep{Clementini_etal_2023} serving as an all-sky cross-matching benchmark.
+A bounded real-survey demonstration of the multi-band FTP against
+single-band and multi-band Lomb--Scargle \citep{Vanderplas+Ivezic_2015}
+and conditional entropy \citep{Graham_etal_2013} is presented in
+Section~\ref{sec:ztfdemo}, on a labelled sample of ZTF RR\,Lyrae with
+\citet{Chen_etal_2020} and Gaia DR3 \citep{Clementini_etal_2023} periods as
+truth.  The multi-band FTP recovers periods on par with the strongest
+baselines, and the exercise surfaces two practical limits that simulations
+alone do not: the precision of the truth catalogs themselves at multi-year
+phase coherence, and the excess variance of real photometry relative to the
+synthetic Gaussian nulls used to calibrate significance
+(Section~\ref{sec:fap}).  A survey-scale catalog application, and the joint
+across-class vocabulary inference whose one-population form is characterised in
+Section~\ref{sec:vocab-joint}, are left to follow-up work.
 
 
 
@@ -2008,7 +2015,13 @@ cadence and photometric-error models were retrieved from the public
 IRSA ZTF light-curve service (\texttt{nph\_light\_curves}, DR22-era
 release); the cached light curves, including per-record query
 provenance and the observed MJD span, are stored alongside the
-experiment code.
+experiment code.  The ZTF DR23 light curves of the RR\,Lyrae
+demonstration sample (Section~\ref{sec:ztfdemo}), the
+\citet{Chen_etal_2020} and Gaia DR3 \citep{Clementini_etal_2023}
+cross-match and truth-period tables, the per-star phase folds used in
+adjudication, and the recovery and false-alarm scoring outputs are
+likewise versioned under \texttt{experiments/} with their acquisition
+provenance and seeds.
 
 \bibliographystyle{apj}
 \bibliography{refs}
