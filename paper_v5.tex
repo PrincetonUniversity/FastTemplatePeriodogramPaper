@@ -117,6 +117,7 @@ G.~\'A Bakos\altaffilmark{3,}\altaffilmark{4}}
     ($\approx 14\times$ at $N_{\rm obs} = 15$ observations) and more than two orders of magnitude faster ($\gtrsim 480\times$) by
     $N_{\rm obs} = 250$, an advantage that grows without bound as $N_{\rm obs}$ increases.
     Signals with very sharp features (e.g.\ limb-darkened transits with brief ingress, sharp eclipses) require moderate-to-high harmonic orders ($H\gtrsim 20$) to be reproduced at the $99\%$ $L^2$ level (Table~\ref{tab:hvsaccuracy}); for such signals, transit-tailored methods such as the Box Least-Squares periodogram may be more efficient.
+    We extend the method to heterogeneous signal classes with a small template vocabulary, and calibrate its significance against a measured pure-noise null. On simulated sparse multi-band surveys the template shape prior substantially improves period recovery over Lomb-Scargle in the few-epochs-per-band regime, and a bounded demonstration on Zwicky Transient Facility RR~Lyrae recovers periods on par with the strongest baseline methods while exposing the practical limits set by truth-catalog precision and by the excess variance of real photometry relative to Gaussian noise models.
     An open-source implementation of the fast template periodogram is freely available online.\footnote{\url{https://github.com/PrincetonUniversity/FastTemplatePeriodogram}}
 \end{abstract}
 
