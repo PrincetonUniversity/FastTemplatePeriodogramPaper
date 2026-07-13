@@ -1707,6 +1707,161 @@ template sets, and infrastructure external to the fitting algorithm,
 so we quote only the like-for-like in-harness ratio as a measured
 result.
 
+\section{Demonstration on ZTF observations}\label{sec:ztfdemo}
+
+The simulated validation of Section~\ref{sec:simval} is complemented by a
+bounded demonstration on real photometry from the Zwicky Transient Facility
+\citep[ZTF;][]{Bellm_etal_2019}: a labelled period-recovery test on RR\,Lyrae
+and a false-alarm control on a magnitude-selected field sample.  The aim is to
+exercise the method end-to-end on genuine, systematics-laden light curves and
+to expose what actually limits it -- not to construct a catalog, which is
+deferred to future work.
+
+\subsection{Sample and scoring criterion}
+\label{sec:ztfdemo-sample}
+
+The recovery sample comprises $73$ unique stars observed in $g$ and $r$ from
+ZTF DR23, with per-star baselines of $4.9$--$7.6$\,yr: $58$ \emph{science}
+stars ($30$ RRab, $28$ RRc) with periods from the ZTF catalog of periodic
+variables \citep[][DR2-derived]{Chen_etal_2020}, drawn from three fields, and
+$12$ \emph{anti-join controls} -- Gaia DR3 RR\,Lyrae
+\citep{Clementini_etal_2023} in the same fields that \citet{Chen_etal_2020}
+did \emph{not} catalog, with Gaia periods as truth (three further Gaia controls
+enter only the all-star totals).  Because the \citet{Chen_etal_2020} periods
+derive from an earlier ZTF data release of the same survey, recovering them is
+not fully independent; the controls, the Gaia cross-periods available for
+$55/58$ science stars, and the anti-join comparison of
+Section~\ref{sec:ztfdemo-select} are the mitigations.
+
+A recovered peak must satisfy \emph{both} the community fractional criterion
+$|f-f_{\rm t}|/f_{\rm t} < 1\%$ \citep{Stringer_et_al_2019} \emph{and} a
+phase-coherence criterion $|f-f_{\rm t}|\,T < 0.5$ cycles over the full
+baseline $T$ \citep{Graham_etal_2013}; the top peak is then classified as
+exact, harmonic ($2f$, $f/2$), a sampling alias ($\pm1$, $\pm1/365.25$,
+$\pm1/354.37$\,cyc\,d$^{-1}$), or a miss.  The coherence term dominates: at
+$T\approx7.5$\,yr it demands $|\Delta P|/P \lesssim 9\times10^{-5}$ near
+$P=0.5$\,d, far stricter than the $1\%$ convention, and it is what turns
+truth-catalog imprecision into nominal misses (below).
+
+\subsection{Period recovery}
+\label{sec:ztfdemo-recovery}
+
+Under the strict criterion the pre-adjudication recovery rate on the $58$
+science stars is $87.9\%$ for the FTP multi-band statistic and $89.7\%$ for
+conditional entropy \citep{Graham_etal_2013}, with all six methods between
+$82.8\%$ and $89.7\%$ (every multi-band method $\geq85\%$).  Inspection of the
+nominal misses shows they are dominated not by the periodograms but by the
+truth catalogs: for the $12$ stars present in both Chen and Gaia the two truth
+periods differ by a median $|\Delta P|/P = 3.6\times10^{-5}$ (maximum
+$4.8\times10^{-4}$), enough that $1/12$ falls outside the $0.5$-cycle window
+under one catalog but not the other, and single-catalog scoring undercounts
+genuine recoveries by ${\approx}5$--$12\%$ with a catalog-specific sign.  A
+phase-fold adjudication of the nine flagged stars -- weighted folds, six-method
+consensus, and independent Gaia periods -- returns eight lawful cases
+(truth-catalog imprecision or an outright Chen period error that Gaia
+confirms; five are independently anchored to Gaia) and a single genuine
+failure (a magnitude-$20$ control with no coherent signal at any period).  One
+lawful case is a resolved Blazhko/period-change candidate
+(sideband $\Delta f = 5.4\times10^{-4}$\,cyc\,d$^{-1}$, modulation period
+${\approx}5.1$\,yr).  Re-scoring against the adjudicated periods raises the FTP
+multi-band, multi-band Lomb--Scargle \citep{Vanderplas+Ivezic_2015}, and
+conditional-entropy rates to $58/58 = 100\%$ on science and $72/73$ overall
+(Table~\ref{tab:ztfrecovery}).  Crucially, the plain fractional-only $1\%$
+convention reproduces these post-adjudication multi-band numbers \emph{without}
+any adjudication: the evidence-driven procedure converges to the community
+convention from below rather than manufacturing recoveries.  Across all $438$
+(star, method) cells there is not a single day-, year-, or $354$-day-beat
+alias classification: with ${\gtrsim}250$ epochs over ${\geq}4.9$\,yr the ZTF
+window function does not push any method onto a sampling alias of a real
+signal at these brightnesses.
+
+\begin{table*}
+\centering
+\caption{\label{tab:ztfrecovery}Post-adjudication period-recovery rates on the
+ZTF RR\,Lyrae demonstration sample (Wilson $95\%$ intervals), under the strict
+fractional-\emph{and}-coherence criterion.  ``Science'' are
+\citet{Chen_etal_2020} stars, ``controls'' are the Chen-missed Gaia anti-join
+stars (Section~\ref{sec:ztfdemo-select}).}
+\footnotesize
+\begin{tabular}{lccc}
+\hline\hline
+Method & science ($n{=}58$) & controls ($n{=}12$) & all ($n{=}73$) \\
+\hline
+FTP multi-band     & $100\%$ $[93.8,100]$ & $91.7\%$ $[64.6,98.5]$ & $98.6\%$ $[92.6,99.8]$ \\
+cond.\ entropy     & $100\%$ $[93.8,100]$ & $91.7\%$ $[64.6,98.5]$ & $98.6\%$ $[92.6,99.8]$ \\
+multi-band LS      & $100\%$ $[93.8,100]$ & $83.3\%$ $[55.2,95.3]$ & $97.3\%$ $[90.6,99.2]$ \\
+GLS (single band)  & $98.3\%$ $[90.9,99.7]$ & $91.7\%$ $[64.6,98.5]$ & $97.3\%$ $[90.6,99.2]$ \\
+FTP (single band)  & $96.6\%$ $[88.3,99.0]$ & $91.7\%$ $[64.6,98.5]$ & $94.5\%$ $[86.7,97.8]$ \\
+MHLS ($H{=}8$)     & $91.4\%$ $[81.4,96.3]$ & $91.7\%$ $[64.6,98.5]$ & $91.8\%$ $[83.2,96.2]$ \\
+\hline
+\end{tabular}
+\end{table*}
+
+\subsection{Selection function and the anti-join controls}
+\label{sec:ztfdemo-select}
+
+The anti-join controls test whether the demonstration merely re-detects
+\citet{Chen_etal_2020}'s own selection.  These Chen-missed Gaia RR\,Lyrae are a
+genuinely harder population -- median joint epoch counts of $118$ against
+$1758$ for the science stars, reaching $r\approx20$ -- yet $11/12$ are
+recovered post-adjudication, a difference from the science rate of $+8.3$
+percentage points (Newcombe $95\%$ interval $[-0.9,+35.4]$) that is consistent
+with zero.  The single control failure is the magnitude-$20$ star, which shows
+no coherent power at its Gaia period in any statistic; the measurable selection
+effect is therefore photometric \emph{depth}, not any tuning of the methods to
+Chen's selection.  This matches the acquisition-stage finding that Chen's
+incompleteness in the densest field is driven by epoch coverage rather than
+brightness (Chen catalogs $134$ of the $958$ Gaia RR\,Lyrae there).
+
+\subsection{False-alarm behaviour on real photometry}
+\label{sec:ztfdemo-fap}
+
+For a false-alarm control we take the $99$ magnitude-selected
+($14$--$18.5$\,mag) field objects of the empirical-error sample
+(Section~\ref{sec:simval-robust}), of which $81$ pass an amplitude/known-variable
+screen.  Sub-sampled to $N=40$ epochs on the identical grid as the
+pure-noise null of Section~\ref{sec:fap}, the screened-clean tail is consistent
+with that calibration: five band-light-curves exceed the empirical $99$th
+percentile against $2.8$ expected (binomial $P = 0.15$), the mild excess
+running in the direction of a known trials mismatch (the real sub-sampled
+baselines, median $2631$\,d, exceed the null's $1096$\,d, giving ${\approx}2.4$
+times more independent frequencies under pure noise).  The three screened
+objects that do exceed the threshold are all flagged variables -- two
+catalogued eclipsing binaries recovered at twice their orbital frequency and
+one Gaia AGN candidate sitting on the $2$\,cyc\,d$^{-1}$ diurnal comb -- i.e.\
+the amplitude screen and the periodogram tail select the same objects: signal
+behaving like signal.
+
+At \emph{full} depth (median $626$/$947$ epochs per band), however, essentially
+the entire real sample -- clean objects included -- sits far above a
+homoscedastic-Gaussian null built with the nominal ZTF error bars ($94$--$98\%$
+of clean $g$ light curves exceed its $99$th percentile, against $1\%$ expected).
+This is the well-known excess-variance property of real ZTF photometry
+(empirical scatter several times the nominal per-point errors at these
+magnitudes, plus low-level correlated systematics), not a property of template
+fitting: single-band GLS is displaced from its null by the same amount as the
+FTP catalog statistic (Kolmogorov--Smirnov distances $0.97$ versus $0.96$ in
+$g$).  The operational consequence is that synthetic Gaussian nulls -- even
+matched in epoch count, baseline, and grid -- must not be used to set detection
+thresholds for full-depth real light curves; an empirical null (e.g.\ shuffled
+photometry) is required there, and the analytic calibration of
+Section~\ref{sec:fap} is a like-for-like statement at fixed epoch count only.
+
+\subsection{Scope of the demonstration}
+\label{sec:ztfdemo-scope}
+
+These rates apply to well-observed ZTF RR\,Lyrae: the sample is
+magnitude-selected and the ZTF error model floors near $\sigma\approx0.04$\,mag
+past $r\approx18.5$, so faint-end completeness is untested here by construction,
+as the one magnitude-$20$ failure illustrates.  The controls' small size
+($n=12$) leaves the selection-effect difference bounded rather than precisely
+measured, and the post-adjudication rates are conditional on the adjudication
+calls (five of eight independently Gaia-anchored; the fractional-only
+convention reproduces them without adjudication).  A per-source sparse-regime
+saturation panel on these real light curves is left to future work; the
+sparse-epoch axis is characterized on simulations in
+Section~\ref{sec:simval-nsweep}.
+
 \section{Discussion}\label{sec:discussion}
 
 Template fitting is a powerful technique for accurately recovering
